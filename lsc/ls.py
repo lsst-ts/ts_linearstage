@@ -1,11 +1,14 @@
+""" This module is for the Zaber linear stage component according to SAL specifications
+
+    This module is designed to intergrate with salpytools. As such it should be installed on any machine that this module is used. 
+"""
+
 # TODO: Add in Sphinx documentation
 # TODO: Finish up docstrings
 # TODO: Add module docstring
 # TODO: Add in Unit Tests
 # TODO: Add in XML
-# TODO: Add in XML for commands
 # TODO: Add in XML for events
-# TODO: Add in XML for telemetry
 
 from zaber.serial import AsciiSerial, AsciiDevice, AsciiCommand, AsciiReply
 from zaber.serial.exceptions import TimeoutError
@@ -22,18 +25,40 @@ logger.addHandler(ch)
 
 
 class LinearStageComponent(AsciiDevice):
-    """ """
+    """A class representing the linear stage device
 
-    # TODO: Add class docstring
+    Parameters
+    ----------
+
+    port :
+        The serial port that the device is connected.
+
+    address :
+        The address of the device, typically 1 or 2 in this use case.
+
+    Attributes
+    ----------
+
+    cmd_queue : LinearStageQueue
+        A queue designed to hold commands 
+
+    reply_queue : LinearStageQueue
+        A queue designed to hold replies connected to commands
+
+    position : str
+        This holds the position of the linear stage. It starts at none as
+        device requires homing to be done before it can be moved.
+
+    reply_flag_dictionary : dict
+        This is a dictionary which contains all of the reply flags 
+        corresponding to what they mean.
+
+    warning_flag_dictionary : dict
+        This is a dictionary which contains all of the warning flags which correspond to what those flags mean.
+
+     """
+
     def __init__(self, port: object, address: object) -> object:
-        """
-
-        :rtype: object
-        :type port: AsciiSerial
-        :type address: Int
-        :param port: This is the serial port where the linear stage is located.
-        :param address: This is the device address, typically incremental i.e. device 1 is 1.
-        """
         try:
             super(LinearStageComponent, self).__init__(port, address)
         except SerialException as e:
@@ -94,12 +119,11 @@ class LinearStageComponent(AsciiDevice):
             "NJ": "Joystick calibration is in progress. Moving the joystick will have no effect."
         }
         logger.debug("created LinearStageComponent")
-        # TODO: Finish docstring
 
     def move_absolute(self, value):
         """This method moves the linear stage absolutely by the number of steps away from the starting position.
         i.e. value=10 would mean the stage would move 10 millimeters away from the start.
-        
+
         The method uses a try-catch block to handle the Timeout error exception. It sends the command which returns a
         reply that is logged and then check for accepted or rejected status according to SAL specifications. If the
         command is accepted then the command begins executing. The device is polled for its status until the device is
@@ -133,7 +157,7 @@ class LinearStageComponent(AsciiDevice):
 
     def move_relative(self, value):
         """This method moves the linear stage relative to the current position.
-        
+
         This method begins by establishing a try-catch block which handles the timeout exception by logging the error
         and proper SAL code. The command is then sent to the device where a reply is ostensibly returned. The reply is
         checked for acknowledgement or rejection and handled accordingly. If the command is accepted the device will
@@ -143,7 +167,7 @@ class LinearStageComponent(AsciiDevice):
         Parameters
         ----------
         value :
-            The number of millimeters to move the stage.
+            The number of millimeters(converted) to move the stage.
 
         Returns
         -------
@@ -165,13 +189,13 @@ class LinearStageComponent(AsciiDevice):
 
     def get_home(self):
         """This method calls the homing method of the device which is used to establish a reference position.
-        
+
         The method begins by forming an AsciiCommand for the home command. The try-catch block is then established for
         the rest of the method in order to catch the timeout error and handle it appropriately. The command is sent to
         the device and a reply is likely returned. The reply is then checked for accepted or rejected status. If the
         command is accepted then the command begins to perform. The device is polled until idle while returning the
         appropriate SAL codes. If the command finishes successfully then the SAL code is logged.
-        
+
         :return:
 
         Parameters
@@ -198,7 +222,7 @@ class LinearStageComponent(AsciiDevice):
 
     def check_reply(self, reply):
         """This method checks the reply for any warnings or errors and acknowledgement or rejection of the command.
-        
+
         This method has 4 if-else clauses that it checks for any normal or abnormal operation of the linear stage.
 
         Parameters
@@ -215,7 +239,8 @@ class LinearStageComponent(AsciiDevice):
                 self.address, self.warning_flag_dictionary[reply.warning_flag]))
             return False
         elif reply.reply_flag == "RJ" and reply.warning_flag == "--":
-            logger.error("Command rejected due to {}".format(self.reply_flag_dictionary.get(reply.data, reply.data)))
+            logger.error("Command rejected due to {}".format(
+                self.reply_flag_dictionary.get(reply.data, reply.data)))
             return False
         elif reply.reply_flag == "OK" and reply.warning_flag != "--":
             logger.warning("Command accepted but probably would return improper result due to {}".format(
@@ -227,11 +252,11 @@ class LinearStageComponent(AsciiDevice):
 
     def get_position(self):
         """This method returns the position of the linear stage.
-        
+
         It works by sending a command to the device and ostensibly is given a reply. The reply is then checked for
         acceptance or rejection by the device and the position is then set by the return of the reply's data
         if successful.
-        
+
         :return: The position of the linear stage
 
         Parameters
@@ -253,9 +278,14 @@ class LinearStageComponent(AsciiDevice):
             raise
 
 
+class SALCode:
+    pass
+
+
 class LinearStageQueue:
     """ """
     # TODO: Finish LinearStageQueue class
+
     def __init__(self):
         self.items = []
         # TODO: Add docstring
@@ -266,7 +296,7 @@ class LinearStageQueue:
         Parameters
         ----------
         item :
-            
+
 
         Returns
         -------
