@@ -120,6 +120,7 @@ class LinearStageComponent(AsciiDevice):
             "NJ": "Joystick calibration is in progress. Moving the joystick will have no effect."
         }
         logger.debug("created LinearStageComponent")
+        self.get_home()
         self.disable()
 
     def move_absolute(self, value):
@@ -142,20 +143,15 @@ class LinearStageComponent(AsciiDevice):
 
         """
         try:
-            reply = self.send("move abs {}".format(value*8000))
+            reply = self.send("move abs {}".format(int(value*8000)))
             logger.debug(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary['accepted']:
-                logger.info("Device is moving {} millimeter(s) from home position".format(value))
-                while self.get_status() != "IDLE":
-                    logger.info("Device is moving... - SAL_INPROGRESS_301")
-                logger.info("Device moved - SAL_COMPLETE_303")
-                self.position = self.get_position()
-                logger.debug(self.position)
+                pass
                 return status_dictionary['code'], status_dictionary['message']
         except TimeoutError as e:
             logger.error(e)
-            logger.info("Command timeout - SAL_CMD_NOACK_-301")
+            logger.info("Command timeout")
             return 51, e
             
         # TODO: Rewrite if statement to be every such X condition
@@ -179,20 +175,17 @@ class LinearStageComponent(AsciiDevice):
 
         """
         try:
-            reply = self.send("move rel {}".format(value * 8000))
+            logger.debug("move rel {}".format(int(value * 8000)))
+            reply = self.send("move rel {}".format(int(value * 8000)))
             logger.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary['accepted']:
-                logger.info("Device is being moved {} millimeters".format(value))
-                while self.get_status() != "IDLE":
-                    logger.info("Device is moving... - SAL_INPROGRESS_301")
-                logger.info("Device moved - SAL_COMPLETE_303")
-                self.position = self.get_position()
+                pass
                 return status_dictionary['code'], status_dictionary['message']
 
         except TimeoutError as e:
             logger.error(e)
-            logger.info("Command timeout - SAL_CMD_NOACK_-301")
+            logger.info("Command timeout")
             return 51, e
 
         # TODO: Change polling to every X rate
@@ -222,14 +215,11 @@ class LinearStageComponent(AsciiDevice):
             logger.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary['accepted']:
-                logger.info("Device {} is homing - SAL_INPROGRESS_301".format(self.address))
-                while self.get_status() != "IDLE":
-                    logger.info("Device {} homing... - SAL_INPROGRESS_301".format(self.address))
-                logger.info("Device {} is homed - SAL_COMPLETE_303".format(self.address))
+                pass
                 return status_dictionary['code'], status_dictionary['message']
         except SerialException as e:
             logger.error(e)
-            logger.info("Command for device timed out - SAL_CMD_NOACK_-301")
+            logger.info("Command for device timed out")
             return 5, e
 
     def check_reply(self, reply):
@@ -260,7 +250,7 @@ class LinearStageComponent(AsciiDevice):
             
             return {'accepted': True, 'code': 4, 'message': self.warning_flag_dictionary[reply.warning_flag]}
         else:
-            logger.info("Command accepted by device #{} - SAL_ACKNOWLEDGED_300".format(self.address))
+            logger.info("Command accepted by device #{}".format(self.address))
             return {'accepted': True, 'code': 0, 'message': "Done: OK"}
 
     def get_position(self):
@@ -285,11 +275,11 @@ class LinearStageComponent(AsciiDevice):
             logger.debug(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary['accepted']:
-                logger.info("Position captured - SAL_EVENT_INFO_200")
+                logger.info("Position captured")
                 return int(reply.data), status_dictionary['code'], status_dictionary['message']
         except SerialException as e:
             logger.error(e)
-            logger.info("Command for device timed out - SAL_CMD_NOACK_-301")
+            logger.info("Command for device timed out")
             return 5, e
 
     def enable(self):
@@ -299,6 +289,18 @@ class LinearStageComponent(AsciiDevice):
     def disable(self):
         self.port.close()
         logger.info("port closed.")
+
+    def retrieve_status(self):
+        try:
+            reply = self.send("")
+            logger.debug(reply)
+            status_dictionary = self.check_reply(reply)
+            if status_dictionary['accepted']:
+                logger.info("Status captured")
+                return reply.device_status, status_dictionary['code'], status_dictionary['message']
+        except SerialException as e:
+            logger.error(e)
+            return 5, e
 
 
 class SALCode:
@@ -337,10 +339,10 @@ class LinearStageQueue:
 
 def main():
     """ """
-    ls_1 = LinearStageComponent("/dev/ttyUSB0", 1)
+    ls_1 = LinearStageComponent("/dev/ttyUSB1", 1)
     ls_1.enable()
-    ls_1.move_absolute(2)
-    ls_1.port.close()
+    ls_1.move_relative(5)
+    ls_1.disable()
 
 
 if __name__ == '__main__':

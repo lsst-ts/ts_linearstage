@@ -1,8 +1,13 @@
+from time import sleep
+
 from lsst.ts.statemachine.states import EnabledState, DisabledState, StandbyState, FaultState, OfflineState, \
     DefaultState
 from lsst.ts.statemachine.context import Context
 from .ls import LinearStageComponent
 from salpytools import salpylib
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 class DisabledState(DisabledState):
@@ -49,8 +54,16 @@ class EnabledState(EnabledState):
         return (code, message)
 
     def get_position(self, model):
-        code, message = model.get_position()
-        return (code, message)
+        code, message , position = model.get_position()
+        return (code, message, position)
+
+
+class MovingState(DefaultState):
+    def __init__(self):
+        super(MovingState, self).__init__('MOVING', 'linearStage')
+
+    def do(self, model):
+        model.change_state("ENABLED")
 
 
 class StandbyState(StandbyState):
@@ -58,7 +71,6 @@ class StandbyState(StandbyState):
         super(StandbyState, self).__init__('STANDBY', 'linearStage')
 
     def do(self, model):
-        model.start()
         model.change_state("DISABLED")
         return (0, 'Done')
 
@@ -82,6 +94,7 @@ class OfflineState(OfflineState):
         pass
 
     def enter_control(self, model):
+        model.start()
         model.change_state("STANDBY")
         return (0, 'Done')
 
@@ -91,18 +104,24 @@ class OfflineState(OfflineState):
 
 class LinearStageModel:
     def __init__(self, port, address):
-        self.state = "OFFLINE"
-        self.previous_state = None
         self._ls = None
         self._port = port
         self._address = address
         self._dds = salpylib.DDSSend('linearStage')
-        self._ss_dict = {"OFFLINE": 5, "STANDBY": 4, "DISABLED": 1, "ENABLED": 2, "FAULT": 3}
+        self._ss_dict = {"OFFLINE": 5, "STANDBY": 4, "DISABLED": 1, "ENABLED": 2, "FAULT": 3, "MOVING": 6}
+        self.state = "OFFLINE"
+        self.previous_state = None
+        self.status = None
+        self.frequency = 0.05
+        self.position = None
+        self.status = None
 
     def change_state(self, state):
+        logger.debug(self.state)
         self.previous_state = self.state
         self.state = state
         self._dds.send_Event('SummaryState', summaryState=self._ss_dict[state])
+        logger.debug(self.state)
 
     def start(self):
         self._ls = LinearStageComponent(port=self._port, address=self._address)
@@ -115,23 +134,41 @@ class LinearStageModel:
 
     def home(self):
         code, message = self._ls.get_home()
+        logger.debug(self.state)
+        self.change_state("MOVING")
+        logger.debug(self.state)
+        while self.retrieve_status()[0] != "IDLE":
+            self.position = self.get_position()
+            sleep(self.frequency)
         self._dds.send_Event('getHome')
         return code, message
 
     def move_absolute(self, distance):
         code, message = self._ls.move_absolute(distance)
+        while self._ls.get_status() != "IDLE":
+            self.position = self.get_position()
+            sleep(self.frequency)
         self._dds.send_Event('moveAbsolute')
         return code, message
 
     def move_relative(self, distance):
         code, message = self._ls.move_relative(distance)
+        while self.retrieve_status()[0] != "IDLE":
+            self.position = self.get_position()
+            sleep(self.frequency)
         self._dds.send_Event('moveRelative')
         return code, message
 
     def get_position(self):
-        position = self._ls.get_position()
+        position, code, message = self._ls.get_position()
         self._dds.send_Event('getPosition')
         self._dds.send_Telemetry('position', position=position)
+        return position, code, message
+
+    def retrieve_status(self):
+        status, code, message = self._ls.retrieve_status()
+        self.status = status
+        return status, code, message
 
 
 class LinearStageCSC:
@@ -139,7 +176,7 @@ class LinearStageCSC:
         self.model = LinearStageModel(port=port, address=address)
         self.subsystem_tag = 'linearStage'
         self.states = {"OFFLINE": OfflineState(), "STANDBY": StandbyState(), "DISABLED": DisabledState(),
-                       "ENABLED": EnabledState(), "FAULT": FaultState()}
+                       "ENABLED": EnabledState(), "FAULT": FaultState(), "MOVING": MovingState()}
 
         self.context = Context(subsystem_tag=self.subsystem_tag, model=self.model, states=self.states)
         self.context.add_command('getHome', 'home')
