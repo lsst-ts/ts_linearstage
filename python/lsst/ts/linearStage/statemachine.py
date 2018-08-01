@@ -65,6 +65,10 @@ class MovingState(DefaultState):
     def do(self, model):
         model.change_state("ENABLED")
 
+    def stop(self, model):
+        code, message = model.stop()
+        return code, message
+
 
 class StandbyState(StandbyState):
     def __init__(self):
@@ -145,6 +149,7 @@ class LinearStageModel:
 
     def move_absolute(self, distance):
         code, message = self._ls.move_absolute(distance)
+        self.change_state("MOVING")
         while self._ls.get_status() != "IDLE":
             self.position = self.get_position()
             sleep(self.frequency)
@@ -153,6 +158,7 @@ class LinearStageModel:
 
     def move_relative(self, distance):
         code, message = self._ls.move_relative(distance)
+        self.change_state("MOVING")
         while self.retrieve_status()[0] != "IDLE":
             self.position = self.get_position()
             sleep(self.frequency)
@@ -170,6 +176,11 @@ class LinearStageModel:
         self.status = status
         return status, code, message
 
+    def stop(self):
+        code, message = self._ls.stop()
+        self._dds.send_Event("stop")
+        return code, message
+
 
 class LinearStageCSC:
     def __init__(self, port, address):
@@ -183,6 +194,7 @@ class LinearStageCSC:
         self.context.add_command('moveAbsolute', 'move_absolute')
         self.context.add_command('moveRelative', 'move_relative')
         self.context.add_command('getPosition', 'get_position')
+        self.context.add_command('stop', 'stop')
         self.entercontrol = salpylib.DDSController(context=self.context, command='enterControl')
         self.start = salpylib.DDSController(context=self.context, command='start')
         self.enable = salpylib.DDSController(context=self.context, command='enable')
@@ -192,6 +204,7 @@ class LinearStageCSC:
         self.moveabsolute = salpylib.DDSController(context=self.context, command='moveAbsolute')
         self.moverelative = salpylib.DDSController(context=self.context, command='moveRelative')
         self.getposition = salpylib.DDSController(context=self.context, command='getPosition')
+        self.stop = salpylib.DDSController(context=self.context, command='stop')
 
         self.entercontrol.start()
         self.start.start()
@@ -202,3 +215,4 @@ class LinearStageCSC:
         self.moveabsolute.start()
         self.moverelative.start()
         self.getposition.start()
+        self.stop.start()

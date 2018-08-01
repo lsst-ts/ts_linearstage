@@ -302,6 +302,18 @@ class LinearStageComponent(AsciiDevice):
             logger.error(e)
             return 5, e
 
+    def stop(self):
+        try:
+            reply = self.send("stop")
+            logger.debug(reply)
+            status_dictionary = self.check_reply(reply)
+            if status_dictionary['accepted']:
+                logger.info("Device stopped")
+                return status_dictionary['code'], status_dictionary['message']
+        except SerialException as e:
+            logger.error(e)
+            return 5, e
+
 
 class SALCode:
     def __init__(self, code_num):
