@@ -124,7 +124,7 @@ class LinearStageModel:
         logger.debug(self.state)
         self.previous_state = self.state
         self.state = state
-        self._dds.send_Event('SummaryState', summaryState=self._ss_dict[state],device_id=self._address)
+        self._dds.send_Event('SummaryState', summaryState=self._ss_dict[state])
         logger.debug(self.state)
 
     def start(self):
@@ -144,7 +144,7 @@ class LinearStageModel:
         while self.retrieve_status()[0] != "IDLE":
             self.position = self.get_position()
             sleep(self.frequency)
-        self._dds.send_Event('getHome',device_id=self._address)
+        self._dds.send_Event('getHome',)
         return code, message
 
     def move_absolute(self, distance):
@@ -153,7 +153,7 @@ class LinearStageModel:
         while self._ls.get_status() != "IDLE":
             self.position = self.get_position()
             sleep(self.frequency)
-        self._dds.send_Event('moveAbsolute',device_id=self._address)
+        self._dds.send_Event('moveAbsolute')
         return code, message
 
     def move_relative(self, distance):
@@ -162,13 +162,13 @@ class LinearStageModel:
         while self.retrieve_status()[0] != "IDLE":
             self.position = self.get_position()
             sleep(self.frequency)
-        self._dds.send_Event('moveRelative',device_id=self._address)
+        self._dds.send_Event('moveRelative')
         return code, message
 
     def get_position(self):
         position, code, message = self._ls.get_position()
-        self._dds.send_Event('getPosition',device_id=self._address)
-        self._dds.send_Telemetry('position', position=position,device_id=self._address)
+        self._dds.send_Event('getPosition')
+        self._dds.send_Telemetry('position', position=position)
         return position, code, message
 
     def retrieve_status(self):
@@ -178,7 +178,7 @@ class LinearStageModel:
 
     def stop(self):
         code, message = self._ls.stop()
-        self._dds.send_Event("stop",device_id=self._address)
+        self._dds.send_Event("stop")
         return code, message
 
 
