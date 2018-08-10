@@ -6,7 +6,6 @@ from lsst.ts.statemachine.context import Context
 from .ls import LinearStageComponent
 from salpytools import salpylib
 import logging
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -179,6 +178,11 @@ class LinearStageModel:
     def stop(self):
         code, message = self._ls.stop()
         self._dds.send_Event("stop")
+        return code, message
+
+    def set_speed(self, speed):
+        code, message = self._ls.set_speed(speed)
+        self._dds.send_Event('setSpeed')
         return code, message
 
 
