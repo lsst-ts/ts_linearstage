@@ -9,7 +9,18 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class EnabledState(EnabledState):
+class MyDisabledState(DisabledState):
+    def __init__(self):
+        super(DisabledState, self).__init__('DISABLED', 'linearStage')
+
+    def enable(self, model):
+        model.enable()
+        model.change_state("ENABLED")
+        self.send_logEvent("summaryState", summaryState=2)
+        return 0, 'Done'
+
+
+class MyEnabledState(EnabledState):
     def __init__(self):
         super(EnabledState, self).__init__('ENABLED', 'linearStage')
 
@@ -53,6 +64,22 @@ class MovingState(DefaultState):
         code, message = model.stop()
         return code, message
 
+
+class MyOfflineState(OfflineState):
+    def __init__(self):
+        super(OfflineState, self).__init__('OFFLINE', 'linearStage')
+
+    def do(self, model):
+        pass
+
+    def enter_control(self, model):
+        model.start()
+        model.change_state("STANDBY")
+        self.send_logEvent("summaryState", summaryState=5)
+        return (0, 'Done')
+
+    def exit(self, model):
+        pass
 
 
 class LinearStageModel:
@@ -139,8 +166,9 @@ class LinearStageCSC:
     def __init__(self, port, address):
         self.model = LinearStageModel(port=port, address=address)
         self.subsystem_tag = 'linearStage'
-        self.states = {"OFFLINE": OfflineState(self.subsystem_tag), "STANDBY": StandbyState(self.subsystem_tag), "DISABLED": DisabledState(self.subsystem_tag),
-                       "ENABLED": EnabledState(), "FAULT": FaultState(self.subsystem_tag), "MOVING": MovingState()}
+        self.states = {"OFFLINE": MyOfflineState(), "STANDBY": StandbyState(self.subsystem_tag),
+                       "DISABLED": MyDisabledState(), "ENABLED": MyEnabledState(),
+                       "FAULT": FaultState(self.subsystem_tag), "MOVING": MovingState()}
 
         self.context = Context(subsystem_tag=self.subsystem_tag, model=self.model, states=self.states)
         self.context.add_command('getHome', 'home')
