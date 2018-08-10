@@ -139,8 +139,8 @@ class LinearStageCSC:
     def __init__(self, port, address):
         self.model = LinearStageModel(port=port, address=address)
         self.subsystem_tag = 'linearStage'
-        self.states = {"OFFLINE": OfflineState(), "STANDBY": StandbyState(), "DISABLED": DisabledState(),
-                       "ENABLED": EnabledState(), "FAULT": FaultState(), "MOVING": MovingState()}
+        self.states = {"OFFLINE": OfflineState(self.subsystem_tag), "STANDBY": StandbyState(self.subsystem_tag), "DISABLED": DisabledState(self.subsystem_tag),
+                       "ENABLED": EnabledState(), "FAULT": FaultState(self.subsystem_tag), "MOVING": MovingState()}
 
         self.context = Context(subsystem_tag=self.subsystem_tag, model=self.model, states=self.states)
         self.context.add_command('getHome', 'home')
