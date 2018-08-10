@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class MyDisabledState(DisabledState):
+class MyDisabledState(DefaultState):
     def __init__(self):
         super(MyDisabledState, self).__init__('DISABLED', 'linearStage')
 
@@ -20,7 +20,7 @@ class MyDisabledState(DisabledState):
         return 0, 'Done'
 
 
-class MyEnabledState(EnabledState):
+class MyEnabledState(DefaultState):
     def __init__(self):
         super(MyEnabledState, self).__init__('ENABLED', 'linearStage')
 
@@ -65,7 +65,7 @@ class MovingState(DefaultState):
         return code, message
 
 
-class MyOfflineState(OfflineState):
+class MyOfflineState(DefaultState):
     def __init__(self):
         super(MyOfflineState, self).__init__('OFFLINE', 'linearStage')
 
@@ -76,7 +76,7 @@ class MyOfflineState(OfflineState):
         model.start()
         model.change_state("STANDBY")
         self.send_logEvent("summaryState", summaryState=5)
-        return (0, 'Done')
+        return 0, 'Done'
 
     def exit(self, model):
         pass
