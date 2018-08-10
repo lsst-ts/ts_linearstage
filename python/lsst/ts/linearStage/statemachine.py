@@ -9,22 +9,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class DisabledState(DisabledState):
-    def __init__(self):
-        super(DisabledState, self).__init__('DISABLED', 'linearStage')
-
-    def do(self, model):
-        pass
-
-    def enable(self, model):
-        model.enable()
-        model.change_state("ENABLED")
-        return (0, 'Done')
-
-    def exit(self, model):
-        pass
-
-
 class EnabledState(EnabledState):
     def __init__(self):
         super(EnabledState, self).__init__('ENABLED', 'linearStage')
@@ -34,8 +18,9 @@ class EnabledState(EnabledState):
 
     def disable(self, model):
         model.disable()
-        model.change_state('DISABLED')
-        return (0, 'Done')
+        model.change_state("DISABLED")
+        self.send_logEvent("summaryState", summaryState=1)
+        return 0, 'DONE'
 
     def exit(self, model):
         pass
@@ -69,43 +54,6 @@ class MovingState(DefaultState):
         return code, message
 
 
-class StandbyState(StandbyState):
-    def __init__(self):
-        super(StandbyState, self).__init__('STANDBY', 'linearStage')
-
-    def do(self, model):
-        pass
-
-    def disable(self, model):
-        model.change_state("DISABLED")
-
-    def exit(self, model):
-        pass
-
-
-class FaultState(FaultState):
-    def __init__(self):
-        super(FaultState, self).__init__('FAULT', 'linearStage')
-
-    def do(self, model):
-        pass
-
-
-class OfflineState(OfflineState):
-    def __init__(self):
-        super(OfflineState, self).__init__('OFFLINE', 'linearStage')
-
-    def do(self, model):
-        pass
-
-    def enter_control(self, model):
-        model.start()
-        model.change_state("STANDBY")
-        return (0, 'Done')
-
-    def exit(self, model):
-        pass
-
 
 class LinearStageModel:
     def __init__(self, port, address):
@@ -125,7 +73,6 @@ class LinearStageModel:
         logger.debug(self.state)
         self.previous_state = self.state
         self.state = state
-        self._dds.send_Event('SummaryState', summaryState=self._ss_dict[state])
         logger.debug(self.state)
 
     def start(self):
