@@ -74,8 +74,7 @@ class StandbyState(StandbyState):
         super(StandbyState, self).__init__('STANDBY', 'linearStage')
 
     def do(self, model):
-        model.change_state("DISABLED")
-        return (0, 'Done')
+        pass
 
     def exit(self, model):
         pass
