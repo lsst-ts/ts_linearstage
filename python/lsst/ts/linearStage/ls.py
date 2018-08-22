@@ -16,8 +16,6 @@ import logging
 from serial import SerialException
 from salpytools import salpylib
 
-logger = logging.getLogger(__name__)
-
 
 class LinearStageComponent(AsciiDevice):
     """A class representing the linear stage device
@@ -54,13 +52,14 @@ class LinearStageComponent(AsciiDevice):
      """
 
     def __init__(self, port: object, address: object) -> None:
+        self.logger = logging.getLogger(__name__)
         try:
             super(LinearStageComponent, self).__init__(AsciiSerial(port), address)
         except SerialException as e:
-            logger.error(e)
-            logger.info("It is likely that this port is already being accessed by some other program.")
+            self.logger.error(e)
+            self.logger.info("It is likely that this port is already being accessed by some other program.")
             raise
-        logger.info("Connected to Linear Stage #{}".format(self.address))
+        self.logger.info("Connected to Linear Stage #{}".format(self.address))
         self.cmd_queue = LinearStageQueue()
         self.reply_queue = LinearStageQueue()
         self.position = None
@@ -113,7 +112,7 @@ class LinearStageComponent(AsciiDevice):
             "NU": "A setting is pending to be updated or a reset is pending.",
             "NJ": "Joystick calibration is in progress. Moving the joystick will have no effect."
         }
-        logger.debug("created LinearStageComponent")
+        self.logger.debug("created LinearStageComponent")
         self.get_home()
         self.disable()
 
@@ -138,14 +137,14 @@ class LinearStageComponent(AsciiDevice):
         """
         try:
             reply = self.send("move abs {}".format(int(value*8000)))
-            logger.debug(reply)
+            self.logger.debug(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary['accepted']:
                 pass
                 return status_dictionary['code'], status_dictionary['message']
         except TimeoutError as e:
-            logger.error(e)
-            logger.info("Command timeout")
+            self.logger.error(e)
+            self.logger.info("Command timeout")
             return 51, e
             
         # TODO: Rewrite if statement to be every such X condition
@@ -169,17 +168,17 @@ class LinearStageComponent(AsciiDevice):
 
         """
         try:
-            logger.debug("move rel {}".format(int(value * 8000)))
+            self.logger.debug("move rel {}".format(int(value * 8000)))
             reply = self.send("move rel {}".format(int(value * 8000)))
-            logger.info(reply)
+            self.logger.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary['accepted']:
                 pass
                 return status_dictionary['code'], status_dictionary['message']
 
         except TimeoutError as e:
-            logger.error(e)
-            logger.info("Command timeout")
+            self.logger.error(e)
+            self.logger.info("Command timeout")
             return 51, e
 
         # TODO: Change polling to every X rate
@@ -206,14 +205,14 @@ class LinearStageComponent(AsciiDevice):
         self.cmd_queue.push(cmd)
         try:
             reply = self.send(cmd)
-            logger.info(reply)
+            self.logger.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary['accepted']:
                 pass
                 return status_dictionary['code'], status_dictionary['message']
         except SerialException as e:
-            logger.error(e)
-            logger.info("Command for device timed out")
+            self.logger.error(e)
+            self.logger.info("Command for device timed out")
             return 5, e
 
     def check_reply(self, reply):
@@ -231,20 +230,20 @@ class LinearStageComponent(AsciiDevice):
 
         """
         if reply.reply_flag == "RJ" and reply.warning_flag != "--":
-            logger.warning("Command rejected by device {} for {}".format(
+            self.logger.warning("Command rejected by device {} for {}".format(
                 self.address, self.warning_flag_dictionary[reply.warning_flag]))
             return {'accepted':False,'code': 2, 'message': self.warning_flag_dictionary[reply.warning_flag]}
         elif reply.reply_flag == "RJ" and reply.warning_flag == "--":
-            logger.error("Command rejected due to {}".format(
+            self.logger.error("Command rejected due to {}".format(
                 self.reply_flag_dictionary.get(reply.data, reply.data)))
             return {'accepted': False, 'code': 3, 'message': self.reply_flag_dictionary[reply.reply_flag]}
         elif reply.reply_flag == "OK" and reply.warning_flag != "--":
-            logger.warning("Command accepted but probably would return improper result due to {}".format(
+            self.logger.warning("Command accepted but probably would return improper result due to {}".format(
                 self.warning_flag_dictionary[reply.warning_flag]))
             
             return {'accepted': True, 'code': 4, 'message': self.warning_flag_dictionary[reply.warning_flag]}
         else:
-            logger.info("Command accepted by device #{}".format(self.address))
+            self.logger.info("Command accepted by device #{}".format(self.address))
             return {'accepted': True, 'code': 0, 'message': "Done: OK"}
 
     def get_position(self):
@@ -266,52 +265,47 @@ class LinearStageComponent(AsciiDevice):
         status_dictionary = None
         try:
             reply = self.send("get pos")
-            logger.debug(reply)
+            self.logger.debug(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary['accepted']:
-                logger.info("Position captured")
+                self.logger.info("Position captured")
                 return int(reply.data), status_dictionary['code'], status_dictionary['message']
         except SerialException as e:
-            logger.error(e)
-            logger.info("Command for device timed out")
+            self.logger.error(e)
+            self.logger.info("Command for device timed out")
             return 5, e
 
     def enable(self):
         self.port.open()
-        logger.info("port opened")
+        self.logger.info("port opened")
 
     def disable(self):
         self.port.close()
-        logger.info("port closed.")
+        self.logger.info("port closed.")
 
     def retrieve_status(self):
         try:
             reply = self.send("")
-            logger.debug(reply)
+            self.logger.debug(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary['accepted']:
-                logger.info("Status captured")
+                self.logger.info("Status captured")
                 return reply.device_status, status_dictionary['code'], status_dictionary['message']
         except SerialException as e:
-            logger.error(e)
+            self.logger.error(e)
             return 5, e
 
     def stop(self):
         try:
             reply = self.send("stop")
-            logger.debug(reply)
+            self.logger.debug(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary['accepted']:
-                logger.info("Device stopped")
+                self.logger.info("Device stopped")
                 return status_dictionary['code'], status_dictionary['message']
         except SerialException as e:
-            logger.error(e)
+            self.logger.error(e)
             return 5, e
-
-
-class SALCode:
-    def __init__(self, code_num):
-        self.sal_dictionary = {""}
 
 
 class LinearStageQueue:
