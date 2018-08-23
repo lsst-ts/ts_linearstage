@@ -25,7 +25,7 @@ def create_parser():
     parser.add_argument("-c", "--console-format", dest="console_format", default=None,
                         help="Override the console format.")
     parser.add_argument("port",metavar="PORT",nargs=1,type=str,help="The port of the linear stage")
-    parser.add_argument("address",metavar="ADDRESS",nargs=1,type=str,help="The address of the linear stage")
+    parser.add_argument("address",metavar="ADDRESS",nargs=1,type=int,help="The address of the linear stage")
 
     return parser
 
