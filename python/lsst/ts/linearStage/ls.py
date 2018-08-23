@@ -10,11 +10,10 @@
 # TODO: Add in XML
 # TODO: Add in XML for events
 
-from zaber.serial import AsciiSerial, AsciiDevice, AsciiCommand, AsciiReply
+from zaber.serial import AsciiSerial, AsciiDevice, AsciiCommand
 from zaber.serial.exceptions import TimeoutError
 import logging
 from serial import SerialException
-from salpytools import salpylib
 
 
 class LinearStageComponent(AsciiDevice):
@@ -113,7 +112,6 @@ class LinearStageComponent(AsciiDevice):
             "NJ": "Joystick calibration is in progress. Moving the joystick will have no effect."
         }
         self.logger.debug("created LinearStageComponent")
-        self.get_home()
         self.disable()
 
     def move_absolute(self, value):
@@ -236,7 +234,7 @@ class LinearStageComponent(AsciiDevice):
         elif reply.reply_flag == "RJ" and reply.warning_flag == "--":
             self.logger.error("Command rejected due to {}".format(
                 self.reply_flag_dictionary.get(reply.data, reply.data)))
-            return {'accepted': False, 'code': 3, 'message': self.reply_flag_dictionary[reply.reply_flag]}
+            return {'accepted': False, 'code': 3, 'message': self.reply_flag_dictionary[reply.data]}
         elif reply.reply_flag == "OK" and reply.warning_flag != "--":
             self.logger.warning("Command accepted but probably would return improper result due to {}".format(
                 self.warning_flag_dictionary[reply.warning_flag]))
