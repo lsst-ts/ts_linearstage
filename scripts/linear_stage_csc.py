@@ -4,7 +4,7 @@ import argparse
 import logging
 import signal
 
-from lsst.ts.linearStage import LinearStageCSC
+from lsst.ts.linearStage.statemachine import LinearStageCSC
 
 __all__ = ["main"]
 
