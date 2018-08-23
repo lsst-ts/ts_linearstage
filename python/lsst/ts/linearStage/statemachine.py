@@ -209,6 +209,7 @@ class LinearStageCSC:
         self.getposition = salpylib.DDSController(context=self.context, command='getPosition',device_id=address)
         self.stop = salpylib.DDSController(context=self.context, command='stop',device_id=address)
 
+    def run(self):
         self.entercontrol.start()
         self.start.start()
         self.enable.start()
@@ -219,3 +220,25 @@ class LinearStageCSC:
         self.moverelative.start()
         self.getposition.start()
         self.stop.start()
+
+    def stop(self):
+        self.entercontrol.stop()
+        self.start.stop()
+        self.enable.stop()
+        self.disable.stop()
+        self.exitcontrol.stop()
+        self.home.stop()
+        self.moveabsolute.stop()
+        self.moverelative.stop()
+        self.getposition.stop()
+        self.stop.stop()
+        self.entercontrol.join()
+        self.start.join()
+        self.enable.join()
+        self.disable.join()
+        self.exitcontrol.join()
+        self.home.join()
+        self.moveabsolute.join()
+        self.moverelative.join()
+        self.getposition.join()
+        self.stop.join()
