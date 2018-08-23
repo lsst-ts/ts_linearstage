@@ -44,12 +44,12 @@ def main(args):
 
     log = logging.getLogger(__name__)
 
-    csc = LinearStageCSC(args.port,args.address)
+    csc = LinearStageCSC(args.port[0], args.address[0])
 
     log.info('Running CSC (Control+C to stop it)...')
 
-    signal.signal(signal.SIGTERM, csc.stop)
-    signal.signal(signal.SIGINT, csc.stop)
+    signal.signal(signal.SIGTERM, csc.stop_csc)
+    signal.signal(signal.SIGINT, csc.stop_csc)
 
     try:
         csc.run()
