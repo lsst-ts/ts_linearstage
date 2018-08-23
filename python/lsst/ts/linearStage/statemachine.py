@@ -198,24 +198,65 @@ class LinearStageCSC:
         self.context.add_command('moveRelative', 'move_relative')
         self.context.add_command('getPosition', 'get_position')
         self.context.add_command('stop', 'stop')
-        self.entercontrol = salpylib.DDSController(context=self.context, command='enterControl',device_id=address)
-        self.start = salpylib.DDSController(context=self.context, command='start',device_id=address)
-        self.enable = salpylib.DDSController(context=self.context, command='enable',device_id=address)
-        self.disable = salpylib.DDSController(context=self.context, command='disable',device_id=address)
-        self.exitcontrol = salpylib.DDSController(context=self.context, command='exitControl',device_id=address)
-        self.home = salpylib.DDSController(context=self.context, command='getHome',device_id=address)
-        self.moveabsolute = salpylib.DDSController(context=self.context, command='moveAbsolute',device_id=address)
-        self.moverelative = salpylib.DDSController(context=self.context, command='moveRelative',device_id=address)
-        self.getposition = salpylib.DDSController(context=self.context, command='getPosition',device_id=address)
-        self.stop = salpylib.DDSController(context=self.context, command='stop',device_id=address)
+        self.entercontrol = salpylib.DDSController(context=self.context, command='enterControl',
+                                                   device_id=address)
+        self.start = salpylib.DDSController(context=self.context, command='start',
+                                            device_id=address)
+        self.enable = salpylib.DDSController(context=self.context, command='enable',
+                                             device_id=address)
+        self.disable = salpylib.DDSController(context=self.context, command='disable',
+                                              device_id=address)
+        self.exitcontrol = salpylib.DDSController(context=self.context, command='exitControl',
+                                                  device_id=address)
+        self.standby = salpylib.DDSController(context=self.context, command='standby',
+                                              device_id=address)
+        self.home = salpylib.DDSController(context=self.context, command='getHome',
+                                           device_id=address)
+        self.moveabsolute = salpylib.DDSController(context=self.context, command='moveAbsolute',
+                                                   device_id=address)
+        self.moverelative = salpylib.DDSController(context=self.context, command='moveRelative',
+                                                   device_id=address)
+        self.getposition = salpylib.DDSController(context=self.context, command='getPosition',
+                                                  device_id=address)
+        self.stop = salpylib.DDSController(context=self.context, command='stop',
+                                           device_id=address)
 
+    def run(self):
         self.entercontrol.start()
         self.start.start()
         self.enable.start()
         self.disable.start()
         self.exitcontrol.start()
+        self.standby.start()
         self.home.start()
         self.moveabsolute.start()
         self.moverelative.start()
         self.getposition.start()
         self.stop.start()
+        logger.info('Component ready...')
+
+    def stop_csc(self, signum, frame):
+        logger.info('Received signal %s [%s]... Stopping components...', signum, frame)
+        self.entercontrol.stop()
+        self.start.stop()
+        self.enable.stop()
+        self.disable.stop()
+        self.exitcontrol.stop()
+        self.standby.stop()
+        self.home.stop()
+        self.moveabsolute.stop()
+        self.moverelative.stop()
+        self.getposition.stop()
+        self.stop.stop()
+        logger.info('Waiting for threads to finish...')
+        self.entercontrol.join()
+        self.start.join()
+        self.enable.join()
+        self.disable.join()
+        self.exitcontrol.join()
+        self.home.join()
+        self.moveabsolute.join()
+        self.moverelative.join()
+        self.getposition.join()
+        self.stop.join()
+        logger.info('Done')
