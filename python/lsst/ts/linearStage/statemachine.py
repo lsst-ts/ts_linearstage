@@ -110,7 +110,8 @@ class LinearStageModel:
         self._port = port
         self._address = address
         self._dds = salpylib.DDSSend('linearStage',device_id=self._address)
-        self._ss_dict = {"OFFLINE": 5, "STANDBY": 4, "DISABLED": 1, "ENABLED": 2, "FAULT": 3, "MOVING": 6}
+        self._ss_dict = {"OFFLINE": 5, "STANDBY": 4, "DISABLED": 1, "ENABLED": 2, "FAULT": 3, "MOVING": 2}
+        self._ds_dict = {"OFFLINE": 5, "STANDBY": 4, "DISABLED": 1, "ENABLED": 2, "FAULT": 3, "MOVING": 6}
         self.state = "OFFLINE"
         self.previous_state = None
         self.status = None
@@ -122,7 +123,8 @@ class LinearStageModel:
         logger.debug(self.state)
         self.previous_state = self.state
         self.state = state
-        self._dds.send_Event('SummaryState', summaryState=self._ss_dict[state])
+        self._dds.send_Event('summaryState', summaryState=self._ss_dict[state])
+        self._dds.send_Event('detailedState', detailedState=self._ds_dict[state])
         logger.debug(self.state)
 
     def start(self):
