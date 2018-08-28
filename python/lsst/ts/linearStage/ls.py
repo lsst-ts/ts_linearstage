@@ -269,7 +269,7 @@ class LinearStageComponent(AsciiDevice):
             status_dictionary = self.check_reply(reply)
             if status_dictionary['accepted']:
                 self.logger.info("Position captured")
-                return int(reply.data), status_dictionary['code'], status_dictionary['message']
+                return float(reply.data / 8000), status_dictionary['code'], status_dictionary['message']
         except SerialException as e:
             self.logger.error(e)
             self.logger.info("Command for device timed out")

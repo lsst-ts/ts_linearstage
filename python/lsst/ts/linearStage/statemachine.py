@@ -59,7 +59,7 @@ class EnabledState(EnabledState):
 
 class MovingState(DefaultState):
     def __init__(self):
-        super(MovingState, self).__init__('MOVING', 'linearStage')
+        super(MovingState, self).__init__('MOVING', 'LinearStage')
 
     def do(self, model):
         model.change_state("ENABLED")
@@ -71,7 +71,7 @@ class MovingState(DefaultState):
 
 class StandbyState(StandbyState):
     def __init__(self):
-        super(StandbyState, self).__init__('STANDBY', 'linearStage')
+        super(StandbyState, self).__init__('STANDBY', 'LinearStage')
 
     def do(self, model):
         pass
@@ -82,7 +82,7 @@ class StandbyState(StandbyState):
 
 class FaultState(FaultState):
     def __init__(self):
-        super(FaultState, self).__init__('FAULT', 'linearStage')
+        super(FaultState, self).__init__('FAULT', 'LinearStage')
 
     def do(self, model):
         pass
@@ -90,7 +90,7 @@ class FaultState(FaultState):
 
 class OfflineState(OfflineState):
     def __init__(self):
-        super(OfflineState, self).__init__('OFFLINE', 'linearStage')
+        super(OfflineState, self).__init__('OFFLINE', 'LinearStage')
 
     def do(self, model):
         pass
@@ -109,8 +109,9 @@ class LinearStageModel:
         self._ls = None
         self._port = port
         self._address = address
-        self._dds = salpylib.DDSSend('linearStage',device_id=self._address)
-        self._ss_dict = {"OFFLINE": 5, "STANDBY": 4, "DISABLED": 1, "ENABLED": 2, "FAULT": 3, "MOVING": 6}
+        self._dds = salpylib.DDSSend('LinearStage',device_id=self._address)
+        self._ss_dict = {"OFFLINE": 5, "STANDBY": 4, "DISABLED": 1, "ENABLED": 2, "FAULT": 3, "MOVING": 2}
+        self._ds_dict = {"OFFLINE": 5, "STANDBY": 4, "DISABLED": 1, "ENABLED": 2, "FAULT": 3, "MOVING": 6}
         self.state = "OFFLINE"
         self.previous_state = None
         self.status = None
@@ -122,7 +123,8 @@ class LinearStageModel:
         logger.debug(self.state)
         self.previous_state = self.state
         self.state = state
-        self._dds.send_Event('SummaryState', summaryState=self._ss_dict[state])
+        self._dds.send_Event('summaryState', summaryState=self._ss_dict[state])
+        self._dds.send_Event('detailedState', detailedState=self._ds_dict[state])
         logger.debug(self.state)
 
     def start(self):
@@ -188,7 +190,7 @@ class LinearStageModel:
 class LinearStageCSC:
     def __init__(self, port, address):
         self.model = LinearStageModel(port=port, address=address)
-        self.subsystem_tag = 'linearStage'
+        self.subsystem_tag = 'LinearStage'
         self.states = {"OFFLINE": OfflineState(), "STANDBY": StandbyState(), "DISABLED": DisabledState(),
                        "ENABLED": EnabledState(), "FAULT": FaultState(), "MOVING": MovingState()}
 
