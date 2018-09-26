@@ -53,8 +53,8 @@ class EnabledState(EnabledState):
         return (code, message)
 
     def get_position(self, model):
-        position, code, message = model.get_position()
-        return (position, code, message)
+        code, message, position = model.get_position()
+        return (code, message, position)
 
 
 class MovingState(DefaultState):
