@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class DisabledState(DisabledState):
     def __init__(self):
-        super(DisabledState, self).__init__('DISABLED', 'linearStage')
+        super(DisabledState, self).__init__('DISABLED', 'LinearStage')
 
     def do(self, model):
         pass
@@ -27,7 +27,7 @@ class DisabledState(DisabledState):
 
 class EnabledState(EnabledState):
     def __init__(self):
-        super(EnabledState, self).__init__('ENABLED', 'linearStage')
+        super(EnabledState, self).__init__('ENABLED', 'LinearStage')
 
     def do(self, model):
         pass
