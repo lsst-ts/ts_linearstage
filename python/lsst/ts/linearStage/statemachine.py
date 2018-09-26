@@ -97,7 +97,9 @@ class OfflineState(OfflineState):
 
     def enter_control(self, model):
         model.start()
+        model._ls.enable()
         model.home()
+        model._ls.disable()
         model.change_state("STANDBY")
         return (0, 'Done')
 
