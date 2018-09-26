@@ -76,6 +76,10 @@ class StandbyState(StandbyState):
     def do(self, model):
         pass
 
+    def disable(self, model):
+        model.change_state("DISABLED")
+        return (0, 'Done')
+
     def exit(self, model):
         pass
 
