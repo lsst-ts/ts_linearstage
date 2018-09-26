@@ -144,8 +144,8 @@ class LinearStageModel:
         logger.debug(self.state)
         self.change_state("MOVING")
         logger.debug(self.state)
-        while self.retrieve_status()[0] != "IDLE":
-            self.position = self.get_position()[0]
+        while self.retrieve_status()[2] != "IDLE":
+            self.position = self.get_position()[2]
             sleep(self.frequency)
         self._dds.send_Event('getHome')
         return code, message
@@ -172,12 +172,12 @@ class LinearStageModel:
         position, code, message = self._ls.get_position()
         self._dds.send_Event('getPosition')
         self._dds.send_Telemetry('position', position=position)
-        return position, code, message
+        return code, message, position
 
     def retrieve_status(self):
         status, code, message = self._ls.retrieve_status()
         self.status = status
-        return status, code, message
+        return code, message, status
 
     def stop(self):
         code, message = self._ls.stop()
