@@ -157,7 +157,7 @@ class LinearStageModel:
     def move_absolute(self, distance):
         code, message = self._ls.move_absolute(distance)
         self.change_state("MOVING")
-        while self._ls.get_status() != "IDLE":
+        while self.retrieve_status()[2] != "IDLE":
             self.position = self.get_position()[2]
             sleep(self.frequency)
         self._dds.send_Event('moveAbsolute')
@@ -167,7 +167,7 @@ class LinearStageModel:
         code, message = self._ls.move_relative(distance)
         self.change_state("MOVING")
         while self.retrieve_status()[2] != "IDLE":
-            self.position = self.get_position()
+            self.position = self.get_position()[2]
             sleep(self.frequency)
         self._dds.send_Event('moveRelative')
         return code, message
