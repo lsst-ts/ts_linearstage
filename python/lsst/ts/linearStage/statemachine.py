@@ -42,7 +42,7 @@ class EnabledState(EnabledState):
 
     def home(self, model):
         code, message = model.home()
-        return (code,message)
+        return (code, message)
 
     def move_absolute(self, model):
         code, message = model.move_absolute(self.data.distance)
@@ -116,7 +116,7 @@ class LinearStageModel:
         self._ls = None
         self._port = port
         self._address = address
-        self._dds = salpylib.DDSSend('LinearStage',device_id=self._address)
+        self._dds = salpylib.DDSSend('LinearStage', device_id=self._address)
         self._ss_dict = {"OFFLINE": 5, "STANDBY": 4, "DISABLED": 1, "ENABLED": 2, "FAULT": 3, "MOVING": 2}
         self._ds_dict = {"OFFLINE": 5, "STANDBY": 4, "DISABLED": 1, "ENABLED": 2, "FAULT": 3, "MOVING": 6}
         self.state = "OFFLINE"

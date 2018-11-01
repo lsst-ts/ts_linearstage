@@ -1,6 +1,7 @@
 """ This module is for the Zaber linear stage component according to SAL specifications
 
-    This module is designed to integrate with salpytools. As such it should be installed on any machine that this module is used.
+    This module is designed to integrate with salpytools. As such it should be installed on any machine that this
+    module is used.
 """
 
 # TODO: Add in Sphinx documentation
@@ -59,8 +60,6 @@ class LinearStageComponent(AsciiDevice):
             self.logger.info("It is likely that this port is already being accessed by some other program.")
             raise
         self.logger.info("Connected to Linear Stage #{}".format(self.address))
-        self.cmd_queue = LinearStageQueue()
-        self.reply_queue = LinearStageQueue()
         self.position = None
         self.reply_flag_dictionary = {
             "BADDATA": "improperly formatted or invalid data",
@@ -112,7 +111,6 @@ class LinearStageComponent(AsciiDevice):
             "NJ": "Joystick calibration is in progress. Moving the joystick will have no effect."
         }
         self.logger.debug("created LinearStageComponent")
-        self.disable()
 
     def move_absolute(self, value):
         """This method moves the linear stage absolutely by the number of steps away from the starting position.
@@ -143,9 +141,7 @@ class LinearStageComponent(AsciiDevice):
         except TimeoutError as e:
             self.logger.error(e)
             self.logger.info("Command timeout")
-            return 51, e
-            
-        # TODO: Rewrite if statement to be every such X condition
+            raise
 
     def move_relative(self, value):
         """This method moves the linear stage relative to the current position.
@@ -177,9 +173,7 @@ class LinearStageComponent(AsciiDevice):
         except TimeoutError as e:
             self.logger.error(e)
             self.logger.info("Command timeout")
-            return 51, e
-
-        # TODO: Change polling to every X rate
+            raise
 
     def get_home(self):
         """This method calls the homing method of the device which is used to establish a reference position.
@@ -200,7 +194,6 @@ class LinearStageComponent(AsciiDevice):
 
         """
         cmd = AsciiCommand("{} home".format(self.address))
-        self.cmd_queue.push(cmd)
         try:
             reply = self.send(cmd)
             self.logger.info(reply)
@@ -211,7 +204,7 @@ class LinearStageComponent(AsciiDevice):
         except SerialException as e:
             self.logger.error(e)
             self.logger.info("Command for device timed out")
-            return 5, e
+            raise
 
     def check_reply(self, reply):
         """This method checks the reply for any warnings or errors and acknowledgement or rejection of the command.
@@ -230,7 +223,7 @@ class LinearStageComponent(AsciiDevice):
         if reply.reply_flag == "RJ" and reply.warning_flag != "--":
             self.logger.warning("Command rejected by device {} for {}".format(
                 self.address, self.warning_flag_dictionary[reply.warning_flag]))
-            return {'accepted':False,'code': 2, 'message': self.warning_flag_dictionary[reply.warning_flag]}
+            return {'accepted': False, 'code': 2, 'message': self.warning_flag_dictionary[reply.warning_flag]}
         elif reply.reply_flag == "RJ" and reply.warning_flag == "--":
             self.logger.error("Command rejected due to {}".format(
                 self.reply_flag_dictionary.get(reply.data, reply.data)))
@@ -267,11 +260,11 @@ class LinearStageComponent(AsciiDevice):
             status_dictionary = self.check_reply(reply)
             if status_dictionary['accepted']:
                 self.logger.info("Position captured")
-                return float(float(reply.data) / 8000), status_dictionary['code'], status_dictionary['message']
+                return float(float(reply.data) / 8000)
         except SerialException as e:
             self.logger.error(e)
             self.logger.info("Command for device timed out")
-            return 5, e
+            raise e
 
     def enable(self):
         self.port.open()
@@ -288,10 +281,10 @@ class LinearStageComponent(AsciiDevice):
             status_dictionary = self.check_reply(reply)
             if status_dictionary['accepted']:
                 self.logger.info("Status captured")
-                return reply.device_status, status_dictionary['code'], status_dictionary['message']
+                return reply.device_status
         except SerialException as e:
             self.logger.error(e)
-            return 5, e
+            raise
 
     def stop(self):
         try:
@@ -303,36 +296,7 @@ class LinearStageComponent(AsciiDevice):
                 return status_dictionary['code'], status_dictionary['message']
         except SerialException as e:
             self.logger.error(e)
-            return 5, e
-
-
-class LinearStageQueue:
-    """ """
-    # TODO: Finish LinearStageQueue class
-
-    def __init__(self):
-        self.items = []
-        # TODO: Add docstring
-
-    def push(self, item):
-        """
-
-        Parameters
-        ----------
-        item :
-
-
-        Returns
-        -------
-
-        """
-        self.items.append(item)
-        # TODO: Add docstring
-
-    def pop(self):
-        """ """
-        return self.items.pop()
-        # TODO: Add docstring
+            raise e
 
 
 def main():

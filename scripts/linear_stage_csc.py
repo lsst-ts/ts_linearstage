@@ -1,67 +1,38 @@
 #!/usr/bin/env python
 
-import argparse
 import logging
-import signal
+import asyncio
+import argh
 
-from lsst.ts.linearStage.statemachine import LinearStageCSC
+from lsst.ts.linearStage.csc import LinearStageCSC
 
-__all__ = ["main"]
-
-LOG_LEVEL = [logging.ERROR, logging.INFO, logging.DEBUG]
-
-
-def create_parser():
-    """Create parser
-    """
-    description = ["This is the main driver script for the LSST OCS scripts."]
-
-    parser = argparse.ArgumentParser(usage="run_sequence.py [options]",
-                                     description=" ".join(description),
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    parser.add_argument("-v", "--verbose", dest="verbose", action='count', default=0,
-                        help="Set the verbosity for the console logging.")
-    parser.add_argument("-c", "--console-format", dest="console_format", default=None,
-                        help="Override the console format.")
-    parser.add_argument("port",metavar="PORT",nargs=1,type=str,help="The port of the linear stage")
-    parser.add_argument("address",metavar="ADDRESS",nargs=1,type=int,help="The address of the linear stage")
-
-    return parser
-
-
-def main(args):
-    """
-    Main method to startup OCS scripts in python.
-    :param args:
-    :return:
-    """
-
-    level = LOG_LEVEL[args.verbose] if args.verbose < 3 else logging.DEBUG
-
-    logging.basicConfig(level=level, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-    logging.captureWarnings(True)
-
-    log = logging.getLogger(__name__)
-
-    csc = LinearStageCSC(args.port[0], args.address[0])
-
-    log.info('Running CSC (Control+C to stop it)...')
-
-    signal.signal(signal.SIGTERM, csc.stop_csc)
-    signal.signal(signal.SIGINT, csc.stop_csc)
-
+@argh.arg('-v','--verbose',choices=['info','debug'])
+def main(port, address, verbose="info"):
+    log = logging.getLogger()
+    ch = logging.StreamHandler()
+    if verbose == "info":
+        log.setLevel(logging.INFO)
+        ch.setLevel(logging.INFO)
+    elif verbose == "debug":
+        log.setLevel(logging.DEBUG)
+        ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
+    ch.setFormatter(formatter)
+    log.addHandler(ch)
+    parser = argh.ArghParser()
+    ls=LinearStageCSC(port,address)
+    log.info("LinearStage {0} initialized".format(address))
+    loop = asyncio.get_event_loop()
     try:
-        csc.run()
-        signal.pause()
+        log.info('Running CSC (Hit ctrl+c to stop it')
+        loop.run_forever()
     except KeyboardInterrupt as e:
-        log.info('Stopping %s CSC.', args.subsystem_tag)
-
-    return 0
+        log.info("Stopping CBP CSC")
+    except Exception as e:
+        log.error(e)
+    finally:
+        loop.close()
 
 
 if __name__ == '__main__':
-    parser = create_parser()
-    args = parser.parse_args()
-
-    main(args)
+    argh.dispatch_command(main)
