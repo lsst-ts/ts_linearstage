@@ -7,7 +7,8 @@ import argh
 from lsst.ts.linearStage.csc import LinearStageCSC
 
 @argh.arg('-v','--verbose',choices=['info','debug'])
-def main(port, address=1, verbose="info"):
+@argh.arg('address',type=int)
+def main(port, address, verbose="info"):
     log = logging.getLogger()
     ch = logging.StreamHandler()
     if verbose == "info":
