@@ -15,12 +15,12 @@ class LinearStageCSC(salobj.BaseCsc):
 
     @property
     def detailed_state(self):
-        detailed_state_topic = self._evt_detailedState.DataType()
+        detailed_state_topic = self.evt_detailedState.DataType()
         return detailed_state_topic.detailedState
 
     @detailed_state.setter
     def detailed_state(self, new_sub_state):
-        detailed_state_topic = self._evt_detailedState.DataType()
+        detailed_state_topic = self.evt_detailedState.DataType()
         detailed_state_topic.detailedState = new_sub_state
         self.evt_detailedState.put(detailed_state_topic)
 
