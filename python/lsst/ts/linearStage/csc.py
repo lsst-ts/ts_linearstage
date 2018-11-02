@@ -11,7 +11,6 @@ class LinearStageCSC(salobj.BaseCsc):
         self.summary_state = initial_state
         self.frequency = frequency
         self.position_topic = self.tel_position.DataType()
-        self.status_topic = self.tel_status.DataType()
         self.detailed_state = 0
 
     @property
@@ -25,7 +24,11 @@ class LinearStageCSC(salobj.BaseCsc):
         detailed_state_topic.detailedState = new_sub_state
         self.evt_detailedState.put(detailed_state_topic)
 
-    def assert_moving(self, action):
+    def assert_notmoving(self, action):
+        if self.detailed_state == 1:
+            raise salobj.base.ExpectedError(f"{action} not allowed in state {self.detailed_state}")
+
+    def assert_moving(self,action):
         if self.detailed_state != 1:
             raise salobj.base.ExpectedError(f"{action} not allowed in state {self.detailed_state}")
 
@@ -38,6 +41,7 @@ class LinearStageCSC(salobj.BaseCsc):
 
     async def do_getHome(self, id_data):
         self.assert_enabled("getHome")
+        self.assert_notmoving("getHome")
         self.detailed_state = 1
         self.model.get_home()
         await self.wait_idle()
@@ -49,6 +53,7 @@ class LinearStageCSC(salobj.BaseCsc):
 
     async def do_moveAbsolute(self, id_data):
         self.assert_enabled("moveAbsolute")
+        self.assert_notmoving("moveAbsolute")
         self.detailed_state = 1
         self.model.move_absolute(id_data.data.position)
         await self.wait_idle()
@@ -56,6 +61,7 @@ class LinearStageCSC(salobj.BaseCsc):
 
     async def do_moveRelative(self, id_data):
         self.assert_enabled("moveRelative")
+        self.assert_notmoving("moveRelative")
         self.detailed_state = 1
         self.model.move_relative(id_data.data.position)
         await self.wait_idle()

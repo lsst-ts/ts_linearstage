@@ -8,8 +8,6 @@
 # TODO: Finish up docstrings
 # TODO: Add module docstring
 # TODO: Add in Unit Tests
-# TODO: Add in XML
-# TODO: Add in XML for events
 
 from zaber.serial import AsciiSerial, AsciiDevice, AsciiCommand
 from zaber.serial.exceptions import TimeoutError
