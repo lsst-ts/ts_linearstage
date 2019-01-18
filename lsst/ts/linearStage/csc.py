@@ -1,5 +1,5 @@
 from lsst.ts.linearStage.hardware import LinearStageComponent
-from lsst.ts.salobj import *
+from lsst.ts.salobj import BaseCsc, State, ExpectedError
 import SALPY_LinearStage
 import asyncio
 
@@ -29,7 +29,7 @@ class LinearStageCSC(BaseCsc):
         if self.detailed_state == 1:
             raise ExpectedError(f"{action} not allowed in state {self.detailed_state}")
 
-    def assert_moving(self,action):
+    def assert_moving(self, action):
         if self.detailed_state != 1:
             raise ExpectedError(f"{action} not allowed in state {self.detailed_state}")
 

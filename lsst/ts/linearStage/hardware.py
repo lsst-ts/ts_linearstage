@@ -26,10 +26,6 @@ class LinearStageComponent(AsciiDevice):
 
     Attributes
     ----------
-
-    cmd_queue : LinearStageQueue
-        A queue designed to hold commands 
-
     reply_queue : LinearStageQueue
         A queue designed to hold replies connected to commands
 
@@ -38,11 +34,12 @@ class LinearStageComponent(AsciiDevice):
         device requires homing to be done before it can be moved.
 
     reply_flag_dictionary : dict
-        This is a dictionary which contains all of the reply flags 
+        This is a dictionary which contains all of the reply flags
         corresponding to what they mean.
 
     warning_flag_dictionary : dict
-        This is a dictionary which contains all of the warning flags which correspond to what those flags mean.
+        This is a dictionary which contains all of the warning flags which correspond to what those flags
+        mean.
 
      """
 
@@ -65,7 +62,8 @@ class LinearStageComponent(AsciiDevice):
             "BADMESSAGEID": "A message ID was provided, but was not either -- or a number from 0 to 99.",
             "DEVICEONLY": "An axis number was specified when trying to execute a device only command.",
             "FULL": "The device has run out of permanent storage and cannot accept the command.",
-            "LOCKSTEP": "An axis cannot be moved using normal motion commands because it is part of a lockstep group.",
+            "LOCKSTEP": "An axis cannot be moved using normal motion commands because it is part of a "
+                        "lockstep group.",
             "NOACCESS": "The command or setting is not available at the current access level.",
             "PARKED": "The device cannot move because it is currently parked.",
             "STATUSBUSY": "The device cannot be parked, nor can certain settings be changed, "
@@ -94,7 +92,8 @@ class LinearStageComponent(AsciiDevice):
                   "is unsupported by the current peripheralid.",
             "WV": "The supply voltage is outside the recommended operating range of the device. "
                   "Damage could result to the device if not remedied.",
-            "WT": "The internal temperature of the controller has exceeded the recommended limit for the device.",
+            "WT": "The internal temperature of the controller has exceeded the recommended limit for the "
+                  "device.",
             "WM": "While not in motion, the axis has been forced out of its position.",
             "NC": "Axis is busy due to manual control via the knob.",
             "NI": "A movement operation (command or manual control) was requested "
@@ -108,14 +107,14 @@ class LinearStageComponent(AsciiDevice):
         self.logger.debug("created LinearStageComponent")
 
     def move_absolute(self, value):
-        """This method moves the linear stage absolutely by the number of steps away from the starting position.
-        i.e. value=10 would mean the stage would move 10 millimeters away from the start.
+        """This method moves the linear stage absolutely by the number of steps away from the starting
+        position. i.e. value=10 would mean the stage would move 10 millimeters away from the start.
 
-        The method uses a try-catch block to handle the Timeout error exception. It sends the command which returns a
-        reply that is logged and then check for accepted or rejected status according to SAL specifications. If the
-        command is accepted then the command begins executing. The device is polled for its status until the device is
-        idle. If the command finishes successfully then it is logged and the position is set by the get_position
-        function.
+        The method uses a try-catch block to handle the Timeout error exception. It sends the command which
+        returns a reply that is logged and then check for accepted or rejected status according to SAL
+        specifications. If the command is accepted then the command begins executing. The device is polled for
+        its status until the device is idle. If the command finishes successfully then it is logged and the
+        position is set by the get_position function.
 
         Parameters
         ----------
@@ -138,11 +137,11 @@ class LinearStageComponent(AsciiDevice):
     def move_relative(self, value):
         """This method moves the linear stage relative to the current position.
 
-        This method begins by establishing a try-catch block which handles the timeout exception by logging the error
-        and proper SAL code. The command is then sent to the device where a reply is ostensibly returned. The reply is
-        checked for acknowledgement or rejection and handled accordingly. If the command is accepted the device will
-        perform the move and poll the device until it is idle returning SAL codes. The position attribute is updated
-        using the get_position function.
+        This method begins by establishing a try-catch block which handles the timeout exception by logging
+        the error and proper SAL code. The command is then sent to the device where a reply is ostensibly
+        returned. The reply is checked for acknowledgement or rejection and handled accordingly. If the
+        command is accepted the device will perform the move and poll the device until it is idle
+        returning SAL codes. The position attribute is updated using the get_position function.
 
         Parameters
         ----------
@@ -167,11 +166,12 @@ class LinearStageComponent(AsciiDevice):
     def get_home(self):
         """This method calls the homing method of the device which is used to establish a reference position.
 
-        The method begins by forming an AsciiCommand for the home command. The try-catch block is then established for
-        the rest of the method in order to catch the timeout error and handle it appropriately. The command is sent to
-        the device and a reply is likely returned. The reply is then checked for accepted or rejected status. If the
-        command is accepted then the command begins to perform. The device is polled until idle while returning the
-        appropriate SAL codes. If the command finishes successfully then the SAL code is logged.
+        The method begins by forming an AsciiCommand for the home command. The try-catch block is then
+        established for the rest of the method in order to catch the timeout error and handle it
+        appropriately. The command is sent to the device and a reply is likely returned. The reply is then
+        checked for accepted or rejected status. If the command is accepted then the command begins to
+        perform. The device is polled until idle while returning the appropriate SAL codes. If the command
+        finishes successfully then the SAL code is logged.
 
         Parameters
         ----------
@@ -191,9 +191,11 @@ class LinearStageComponent(AsciiDevice):
             raise
 
     def check_reply(self, reply):
-        """This method checks the reply for any warnings or errors and acknowledgement or rejection of the command.
+        """This method checks the reply for any warnings or errors and acknowledgement or rejection of the
+        command.
 
-        This method has 4 if-else clauses that it checks for any normal or abnormal operation of the linear stage.
+        This method has 4 if-else clauses that it checks for any normal or abnormal operation of the linear
+        stage.
 
         Parameters
         ----------
@@ -215,7 +217,7 @@ class LinearStageComponent(AsciiDevice):
         elif reply.reply_flag == "OK" and reply.warning_flag != "--":
             self.logger.warning("Command accepted but probably would return improper result due to {}".format(
                 self.warning_flag_dictionary[reply.warning_flag]))
-            
+
             return True
         else:
             self.logger.info("Command accepted by device #{}".format(self.address))
@@ -224,9 +226,9 @@ class LinearStageComponent(AsciiDevice):
     def get_position(self):
         """This method returns the position of the linear stage.
 
-        It works by sending a command to the device and ostensibly is given a reply. The reply is then checked for
-        acceptance or rejection by the device and the position is then set by the return of the reply's data
-        if successful.
+        It works by sending a command to the device and ostensibly is given a reply. The reply is then checked
+        for acceptance or rejection by the device and the position is then set by the return of the reply's
+        data if successful.
 
         Parameters
         ----------
