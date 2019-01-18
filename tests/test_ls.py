@@ -1,4 +1,4 @@
-from lsst.ts.linearStage.ls import LinearStageComponent
+from lsst.ts.linearStage.hardware import LinearStageComponent
 from zaber.serial import AsciiReply
 import pytest
 
@@ -7,24 +7,13 @@ class TestLinearStageComponent:
 
     @pytest.fixture(scope="class")
     def lsc(self):
-        lsc = LinearStageComponent("/dev/pts/4", 1)
+        lsc = LinearStageComponent(None, 1)
         return lsc
-
-    def test_connection(self,lsc):
-        assert lsc is not None
-
-    def test_enable(self,lsc):
-        lsc.enable()
-        assert lsc.port._ser.is_open is True
-
-    def test_disable(self,lsc):
-        lsc.disable()
-        assert lsc.port._ser.is_open is False
 
     def test_command_accepted(self,lsc):
         reply = AsciiReply("@ 01 0 OK IDLE -- 0 \r")
         status_dictionary = lsc.check_reply(reply)
-        assert status_dictionary == {'accepted': True, 'code': 0, 'message': "Done: OK"}
+        assert status_dictionary == True
 
     @pytest.mark.parametrize("data, expected", [("BADDATA", "improperly formatted or invalid data"),
                                                 ("AGAIN", "The command cannot be processed right now. "
@@ -50,7 +39,7 @@ class TestLinearStageComponent:
     def test_command_reply_flag_rejected(self, lsc, data, expected):
         reply = AsciiReply("@ 01 0 RJ IDLE -- {0}".format(data))
         status_dictionary = lsc.check_reply(reply)
-        assert status_dictionary == {'accepted': False, 'code': 3, 'message': expected}
+        assert status_dictionary == False
 
     @pytest.mark.parametrize("data, expected", [("WR", "No reference position"),
                                                 pytest.param("--", "No Warning",marks=pytest.mark.xfail),
@@ -87,7 +76,7 @@ class TestLinearStageComponent:
     def test_command_warning_flag_rejected(self,lsc,data,expected):
         reply = AsciiReply("@ 01 0 RJ IDLE {0} 0".format(data))
         status_dictionary = lsc.check_reply(reply)
-        assert status_dictionary == {'accepted': False, 'code': 2, 'message': expected}
+        assert status_dictionary == False
 
     @pytest.mark.parametrize("data, expected", [("WR", "No reference position"),
                                                 pytest.param("--", "No Warning", marks=pytest.mark.xfail),
@@ -134,4 +123,4 @@ class TestLinearStageComponent:
     def test_command_warning_flag_accepted(self,lsc,data,expected):
         reply = AsciiReply("@ 01 0 OK IDLE {0} 0".format(data))
         status_dictionary = lsc.check_reply(reply)
-        assert status_dictionary == {'accepted': True, 'code': 4, 'message': expected}
+        assert status_dictionary == True
