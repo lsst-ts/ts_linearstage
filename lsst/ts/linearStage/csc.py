@@ -1,17 +1,18 @@
-from lsst.ts.linearStage.ls import LinearStageComponent
-import salobj
+from lsst.ts.linearStage.hardware import LinearStageComponent
+from lsst.ts.salobj import *
 import SALPY_LinearStage
 import asyncio
 
 
-class LinearStageCSC(salobj.BaseCsc):
-    def __init__(self, port, address, initial_state=salobj.State.STANDBY, frequency=1):
+class LinearStageCSC(BaseCsc):
+    def __init__(self, port, address, initial_state=State.STANDBY, frequency=1):
         super().__init__(SALPY_LinearStage)
         self.model = LinearStageModel(port, address)
         self.summary_state = initial_state
         self.frequency = frequency
         self.position_topic = self.tel_position.DataType()
         self.detailed_state = 0
+        asyncio.ensure_future(self.telemetry())
 
     @property
     def detailed_state(self):
@@ -26,11 +27,11 @@ class LinearStageCSC(salobj.BaseCsc):
 
     def assert_notmoving(self, action):
         if self.detailed_state == 1:
-            raise salobj.base.ExpectedError(f"{action} not allowed in state {self.detailed_state}")
+            raise ExpectedError(f"{action} not allowed in state {self.detailed_state}")
 
     def assert_moving(self,action):
         if self.detailed_state != 1:
-            raise salobj.base.ExpectedError(f"{action} not allowed in state {self.detailed_state}")
+            raise ExpectedError(f"{action} not allowed in state {self.detailed_state}")
 
     async def telemetry(self):
         while True:

@@ -1,7 +1,5 @@
 """ This module is for the Zaber linear stage component according to SAL specifications
 
-    This module is designed to integrate with salpytools. As such it should be installed on any machine that this
-    module is used.
 """
 
 # TODO: Add in Sphinx documentation
@@ -9,8 +7,7 @@
 # TODO: Add module docstring
 # TODO: Add in Unit Tests
 
-from zaber.serial import AsciiSerial, AsciiDevice, AsciiCommand
-from zaber.serial.exceptions import TimeoutError
+from zaber.serial import AsciiSerial, AsciiDevice, AsciiCommand, TimeoutError
 import logging
 from serial import SerialException
 
@@ -49,7 +46,7 @@ class LinearStageComponent(AsciiDevice):
 
      """
 
-    def __init__(self, port: object, address: object) -> None:
+    def __init__(self, port: str, address: int) -> None:
         self.logger = logging.getLogger(__name__)
         try:
             super(LinearStageComponent, self).__init__(AsciiSerial(port), address)
@@ -133,9 +130,6 @@ class LinearStageComponent(AsciiDevice):
             reply = self.send("move abs {}".format(int(value*8000)))
             self.logger.debug(reply)
             status_dictionary = self.check_reply(reply)
-            if status_dictionary['accepted']:
-                pass
-                return status_dictionary['code'], status_dictionary['message']
         except TimeoutError as e:
             self.logger.error(e)
             self.logger.info("Command timeout")
@@ -164,9 +158,6 @@ class LinearStageComponent(AsciiDevice):
             reply = self.send("move rel {}".format(int(value * 8000)))
             self.logger.info(reply)
             status_dictionary = self.check_reply(reply)
-            if status_dictionary['accepted']:
-                pass
-                return status_dictionary['code'], status_dictionary['message']
 
         except TimeoutError as e:
             self.logger.error(e)
@@ -182,8 +173,6 @@ class LinearStageComponent(AsciiDevice):
         command is accepted then the command begins to perform. The device is polled until idle while returning the
         appropriate SAL codes. If the command finishes successfully then the SAL code is logged.
 
-        :return:
-
         Parameters
         ----------
 
@@ -196,9 +185,6 @@ class LinearStageComponent(AsciiDevice):
             reply = self.send(cmd)
             self.logger.info(reply)
             status_dictionary = self.check_reply(reply)
-            if status_dictionary['accepted']:
-                pass
-                return status_dictionary['code'], status_dictionary['message']
         except SerialException as e:
             self.logger.error(e)
             self.logger.info("Command for device timed out")
@@ -221,19 +207,19 @@ class LinearStageComponent(AsciiDevice):
         if reply.reply_flag == "RJ" and reply.warning_flag != "--":
             self.logger.warning("Command rejected by device {} for {}".format(
                 self.address, self.warning_flag_dictionary[reply.warning_flag]))
-            return {'accepted': False, 'code': 2, 'message': self.warning_flag_dictionary[reply.warning_flag]}
+            return False
         elif reply.reply_flag == "RJ" and reply.warning_flag == "--":
             self.logger.error("Command rejected due to {}".format(
                 self.reply_flag_dictionary.get(reply.data, reply.data)))
-            return {'accepted': False, 'code': 3, 'message': self.reply_flag_dictionary[reply.data]}
+            return False
         elif reply.reply_flag == "OK" and reply.warning_flag != "--":
             self.logger.warning("Command accepted but probably would return improper result due to {}".format(
                 self.warning_flag_dictionary[reply.warning_flag]))
             
-            return {'accepted': True, 'code': 4, 'message': self.warning_flag_dictionary[reply.warning_flag]}
+            return True
         else:
             self.logger.info("Command accepted by device #{}".format(self.address))
-            return {'accepted': True, 'code': 0, 'message': "Done: OK"}
+            return True
 
     def get_position(self):
         """This method returns the position of the linear stage.
@@ -242,8 +228,6 @@ class LinearStageComponent(AsciiDevice):
         acceptance or rejection by the device and the position is then set by the return of the reply's data
         if successful.
 
-        :return: The position of the linear stage
-
         Parameters
         ----------
 
@@ -251,12 +235,11 @@ class LinearStageComponent(AsciiDevice):
         -------
 
         """
-        status_dictionary = None
         try:
             reply = self.send("get pos")
             self.logger.debug(reply)
             status_dictionary = self.check_reply(reply)
-            if status_dictionary['accepted']:
+            if status_dictionary:
                 self.logger.info("Position captured")
                 return float(float(reply.data) / 8000)
         except SerialException as e:
@@ -277,7 +260,7 @@ class LinearStageComponent(AsciiDevice):
             reply = self.send("")
             self.logger.debug(reply)
             status_dictionary = self.check_reply(reply)
-            if status_dictionary['accepted']:
+            if status_dictionary:
                 self.logger.info("Status captured")
                 return reply.device_status
         except SerialException as e:
@@ -289,9 +272,8 @@ class LinearStageComponent(AsciiDevice):
             reply = self.send("stop")
             self.logger.debug(reply)
             status_dictionary = self.check_reply(reply)
-            if status_dictionary['accepted']:
+            if status_dictionary:
                 self.logger.info("Device stopped")
-                return status_dictionary['code'], status_dictionary['message']
         except SerialException as e:
             self.logger.error(e)
             raise e
