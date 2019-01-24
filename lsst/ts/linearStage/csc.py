@@ -4,6 +4,7 @@ import SALPY_LinearStage
 import asyncio
 import enum
 
+
 class LinearStageDetailedState(enum.IntEnum):
     DISABLEDSTATE = 1
     ENABLEDSTATE = 2
@@ -14,7 +15,7 @@ class LinearStageDetailedState(enum.IntEnum):
 
 
 class LinearStageCSC(BaseCsc):
-    def __init__(self, port, address,index, initial_state=State.STANDBY, frequency=1,):
+    def __init__(self, port, address, index, initial_state=State.STANDBY, frequency=1):
         super().__init__(SALPY_LinearStage,index)
         self.model = LinearStageModel(port, address)
         self.summary_state = initial_state
