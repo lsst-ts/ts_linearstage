@@ -8,7 +8,7 @@ from lsst.ts.linearStage.csc import LinearStageCSC
 
 @argh.arg('-v','--verbose',choices=['info','debug'])
 @argh.arg('address',type=int)
-def main(port, address, verbose="info"):
+def main(port, address,index, verbose="info",frequency=0.5):
     log = logging.getLogger()
     ch = logging.StreamHandler()
     if verbose == "info":
@@ -21,7 +21,7 @@ def main(port, address, verbose="info"):
     ch.setFormatter(formatter)
     log.addHandler(ch)
     parser = argh.ArghParser()
-    ls=LinearStageCSC(port,address)
+    ls=LinearStageCSC(port,address,int(index),frequency=float(frequency))
     log.info("LinearStage {0} initialized".format(address))
     loop = asyncio.get_event_loop()
     try:

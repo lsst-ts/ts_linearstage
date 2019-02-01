@@ -2,35 +2,41 @@ from lsst.ts.linearStage.hardware import LinearStageComponent
 from lsst.ts.salobj import BaseCsc, State, ExpectedError
 import SALPY_LinearStage
 import asyncio
+import enum
+
+
+class LinearStageDetailedState(enum.IntEnum):
+    DISABLEDSTATE = 1
+    ENABLEDSTATE = 2
+    FAULTSTATE = 3
+    OFFLINESTATE = 4
+    STANDBYSTATE = 5
+    MOVINGSTATE = 6
 
 
 class LinearStageCSC(BaseCsc):
-    def __init__(self, port, address, initial_state=State.STANDBY, frequency=1):
-        super().__init__(SALPY_LinearStage)
+    def __init__(self, port, address, index, initial_state=State.STANDBY, frequency=1):
+        super().__init__(SALPY_LinearStage,index)
         self.model = LinearStageModel(port, address)
         self.summary_state = initial_state
         self.frequency = frequency
         self.position_topic = self.tel_position.DataType()
-        self.detailed_state = 0
+        self._detailed_state = LinearStageDetailedState(initial_state)
         asyncio.ensure_future(self.telemetry())
 
     @property
     def detailed_state(self):
-        detailed_state_topic = self.evt_detailedState.DataType()
-        return detailed_state_topic.detailedState
+        return self._detailed_state
 
     @detailed_state.setter
     def detailed_state(self, new_sub_state):
+        self._detailed_state = LinearStageDetailedState(new_sub_state)
         detailed_state_topic = self.evt_detailedState.DataType()
-        detailed_state_topic.detailedState = new_sub_state
+        detailed_state_topic.detailedState = self._detailed_state
         self.evt_detailedState.put(detailed_state_topic)
 
-    def assert_notmoving(self, action):
-        if self.detailed_state == 1:
-            raise ExpectedError(f"{action} not allowed in state {self.detailed_state}")
-
-    def assert_moving(self, action):
-        if self.detailed_state != 1:
+    def allow_notmoving(self, action):
+        if self.detailed_state == LinearStageDetailedState.MOVINGSTATE:
             raise ExpectedError(f"{action} not allowed in state {self.detailed_state}")
 
     async def telemetry(self):
@@ -42,37 +48,32 @@ class LinearStageCSC(BaseCsc):
 
     async def do_getHome(self, id_data):
         self.assert_enabled("getHome")
-        self.assert_notmoving("getHome")
-        self.detailed_state = 1
+        self.allow_notmoving("getHome")
+        self.detailed_state = LinearStageDetailedState.MOVINGSTATE
         self.model.get_home()
-        await self.wait_idle()
-        self.detailed_state = 0
-
-    async def wait_idle(self):
-        if self.model.status != "IDLE":
-            asyncio.sleep(self.frequency)
+        await asyncio.sleep(3)
+        self.detailed_state = LinearStageDetailedState.ENABLEDSTATE
 
     async def do_moveAbsolute(self, id_data):
         self.assert_enabled("moveAbsolute")
-        self.assert_notmoving("moveAbsolute")
-        self.detailed_state = 1
-        self.model.move_absolute(id_data.data.position)
-        await self.wait_idle()
-        self.detailed_state = 0
+        self.allow_notmoving("moveAbsolute")
+        self.detailed_state = LinearStageDetailedState.MOVINGSTATE
+        self.model.move_absolute(id_data.data.distance)
+        await asyncio.sleep(3)
+        self.detailed_state = LinearStageDetailedState.ENABLEDSTATE
 
     async def do_moveRelative(self, id_data):
         self.assert_enabled("moveRelative")
-        self.assert_notmoving("moveRelative")
-        self.detailed_state = 1
-        self.model.move_relative(id_data.data.position)
-        await self.wait_idle()
+        self.allow_notmoving("moveRelative")
+        self.detailed_state = LinearStageDetailedState.MOVINGSTATE
+        self.model.move_relative(id_data.data.distance)
+        await asyncio.sleep(3)
+        self.detailed_state = LinearStageDetailedState.ENABLEDSTATE
 
     async def do_stop(self, id_data):
         self.assert_enabled("stop")
-        self.assert_moving("stop")
         self.model.stop()
-        await self.wait_idle()
-        self.detailed_state = 0
+        self.detailed_state = LinearStageDetailedState.ENABLEDSTATE
 
 
 class LinearStageModel:

@@ -283,10 +283,8 @@ class LinearStageComponent(AsciiDevice):
 
 def main():
     """ """
-    ls_1 = LinearStageComponent("/dev/ttyUSB1", 1)
-    ls_1.enable()
-    ls_1.move_relative(5)
-    ls_1.disable()
+    ls_1 = LinearStageComponent("/dev/ttyUSB0", 1)
+    ls_1.get_home()
 
 
 if __name__ == '__main__':
