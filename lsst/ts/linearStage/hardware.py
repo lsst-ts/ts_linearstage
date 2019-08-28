@@ -125,7 +125,9 @@ class LinearStageComponent(zaber.AsciiDevice):
         try:
             reply = self.send("move abs {}".format(int(value*8000)))
             self.logger.debug(reply)
-            self.check_reply(reply)
+            status_dictionary = self.check_reply(reply)
+            if status_dictionary is False:
+                raise Exception("Command rejected")
         except TimeoutError as e:
             self.logger.error(e)
             self.logger.info("Command timeout")
@@ -153,7 +155,9 @@ class LinearStageComponent(zaber.AsciiDevice):
             self.logger.debug("move rel {}".format(int(value * 8000)))
             reply = self.send("move rel {}".format(int(value * 8000)))
             self.logger.info(reply)
-            self.check_reply(reply)
+            status_dictionary = self.check_reply(reply)
+            if status_dictionary is False:
+                raise Exception("Command rejected")
 
         except TimeoutError as e:
             self.logger.error(e)
