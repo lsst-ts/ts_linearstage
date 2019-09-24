@@ -7,12 +7,13 @@
 # TODO: Add module docstring
 # TODO: Add in Unit Tests
 
-from zaber.serial import AsciiSerial, AsciiDevice, AsciiCommand, TimeoutError
+from zaber import serial as zaber
 import logging
 from serial import SerialException
+import time
 
 
-class LinearStageComponent(AsciiDevice):
+class LinearStageComponent(zaber.AsciiDevice):
     """A class representing the linear stage device
 
     Parameters
@@ -45,13 +46,9 @@ class LinearStageComponent(AsciiDevice):
 
     def __init__(self, port: str, address: int) -> None:
         self.logger = logging.getLogger(__name__)
-        try:
-            super(LinearStageComponent, self).__init__(AsciiSerial(port), address)
-        except SerialException as e:
-            self.logger.error(e)
-            self.logger.info("It is likely that this port is already being accessed by some other program.")
-            raise
-        self.logger.info("Connected to Linear Stage #{}".format(self.address))
+        self.serial_port = port
+        self.device_address = address
+        self.address = 1
         self.position = None
         self.reply_flag_dictionary = {
             "BADDATA": "improperly formatted or invalid data",
@@ -128,7 +125,7 @@ class LinearStageComponent(AsciiDevice):
         try:
             reply = self.send("move abs {}".format(int(value*8000)))
             self.logger.debug(reply)
-            status_dictionary = self.check_reply(reply)
+            self.check_reply(reply)
         except TimeoutError as e:
             self.logger.error(e)
             self.logger.info("Command timeout")
@@ -156,7 +153,7 @@ class LinearStageComponent(AsciiDevice):
             self.logger.debug("move rel {}".format(int(value * 8000)))
             reply = self.send("move rel {}".format(int(value * 8000)))
             self.logger.info(reply)
-            status_dictionary = self.check_reply(reply)
+            self.check_reply(reply)
 
         except TimeoutError as e:
             self.logger.error(e)
@@ -180,11 +177,11 @@ class LinearStageComponent(AsciiDevice):
         -------
 
         """
-        cmd = AsciiCommand("{} home".format(self.address))
+        cmd = zaber.AsciiCommand("{} home".format(self.address))
         try:
             reply = self.send(cmd)
             self.logger.info(reply)
-            status_dictionary = self.check_reply(reply)
+            self.check_reply(reply)
         except SerialException as e:
             self.logger.error(e)
             self.logger.info("Command for device timed out")
@@ -250,6 +247,7 @@ class LinearStageComponent(AsciiDevice):
             raise e
 
     def enable(self):
+        super(LinearStageComponent, self).__init__(zaber.AsciiSerial(self.serial_port), self.device_address)
         self.port.open()
         self.logger.info("port opened")
 
@@ -279,6 +277,41 @@ class LinearStageComponent(AsciiDevice):
         except SerialException as e:
             self.logger.error(e)
             raise e
+
+
+class MockLinearStageComponent:
+    def __init__(self):
+        self.position = 35
+        self.status = "IDLE"
+        self.max_limit = 75
+        self.min_limit = 0
+
+    def get_position(self):
+        return self.position
+
+    def get_status(self):
+        return self.status
+
+    def get_home(self):
+        while self.position != 0:
+            self.position -= 0.1
+            time.sleep(0.01)
+
+    def move_relative(self, value):
+        while self.position != value:
+            if value > 0:
+                self.position += 0.1
+            else:
+                self.position -= 0.1
+            time.sleep(0.01)
+
+    def move_absolute(self, value):
+        while self.position != value:
+            if value > 0:
+                self.position += 0.1
+            else:
+                self.position -= 0.1
+            time.sleep(0.01)
 
 
 def main():

@@ -1,6 +1,5 @@
 from lsst.ts.linearStage.hardware import LinearStageComponent
-from lsst.ts.salobj import BaseCsc, State, ExpectedError
-import SALPY_LinearStage
+from lsst.ts import salobj
 import asyncio
 import enum
 
@@ -14,15 +13,13 @@ class LinearStageDetailedState(enum.IntEnum):
     MOVINGSTATE = 6
 
 
-class LinearStageCSC(BaseCsc):
-    def __init__(self, port, address, index, initial_state=State.STANDBY, frequency=1):
-        super().__init__(SALPY_LinearStage,index)
+class LinearStageCSC(salobj.BaseCsc):
+    def __init__(self, port, address, index, initial_state=salobj.State.STANDBY, frequency=1):
+        super().__init__("LinearStage", index=index, initial_state=initial_state)
         self.model = LinearStageModel(port, address)
-        self.summary_state = initial_state
         self.frequency = frequency
         self.position_topic = self.tel_position.DataType()
         self._detailed_state = LinearStageDetailedState(initial_state)
-        asyncio.ensure_future(self.telemetry())
 
     @property
     def detailed_state(self):
@@ -37,7 +34,7 @@ class LinearStageCSC(BaseCsc):
 
     def allow_notmoving(self, action):
         if self.detailed_state == LinearStageDetailedState.MOVINGSTATE:
-            raise ExpectedError(f"{action} not allowed in state {self.detailed_state}")
+            raise salobj.ExpectedError(f"{action} not allowed in state {self.detailed_state}")
 
     async def telemetry(self):
         while True:
@@ -45,6 +42,14 @@ class LinearStageCSC(BaseCsc):
             self.position_topic.position = self.model.position
             self.tel_position.put(self.position_topic)
             await asyncio.sleep(self.frequency)
+
+    async def begin_enable(self):
+        self.model._ls.enable()
+        asyncio.ensure_future(self.telemetry())
+
+    async def begin_disable(self):
+        self.model._ls.disable()
+        self.telemetry.cancel
 
     async def do_getHome(self, id_data):
         self.assert_enabled("getHome")
