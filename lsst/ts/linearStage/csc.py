@@ -43,11 +43,11 @@ class LinearStageCSC(salobj.BaseCsc):
             self.tel_position.put(self.position_topic)
             await asyncio.sleep(self.frequency)
 
-    async def begin_enable(self):
+    async def begin_enable(self, id_data):
         self.model._ls.enable()
         asyncio.ensure_future(self.telemetry())
 
-    async def begin_disable(self):
+    async def begin_disable(self, id_data):
         self.model._ls.disable()
         self.telemetry.cancel
 
