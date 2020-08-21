@@ -1,4 +1,4 @@
-from lsst.ts.linearStage.hardware import LinearStageComponent
+from lsst.ts.LinearStage.hardware import LinearStageComponent
 from zaber.serial import AsciiReply
 import pytest
 
@@ -7,7 +7,7 @@ class TestLinearStageComponent:
 
     @pytest.fixture(scope="class")
     def lsc(self):
-        lsc = LinearStageComponent("/dev/tty", 1)
+        lsc = LinearStageComponent()
         return lsc
 
     def test_command_accepted(self, lsc):

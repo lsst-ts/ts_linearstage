@@ -1,29 +1,60 @@
-Linear Stage Component
-++++++++++++++++++++++
+##############
+ts-LinearStage
+##############
 
-This is the readme for the linear stage python api.
-
-Manual
-------
-This is the manual_ for the linear stage from Zaber_.
-
-.. _manual: https://www.zaber.com/manuals/A-LST
-.. _Zaber: https://www.zaber.com/
+The LinearStage is a CSC for the Vera C. Rubin Observatory.
+It controls a Zaber linear motor.
 
 Installation
+============
+
+.. code::
+
+    setup -kr .
+    scons
+
+.. code::
+
+    pip install .[dev]
+    pytest --cov lsst.ts.LinearStage -ra
+
+Requirements
 ------------
-This package should be installed using the eups method.
+Run the ``develop-env`` docker image.
 
-.. code-block:: bash
+Usage
+=====
 
-    pip install zaber.serial
-    # if necessary declare ts_statemachine and salpytools
-    eups declare -r . ts_statemachine -t $USER
-    eups setup ts_statemachine -t $USER
-    eups declare -r . salpytools -t $USER
-    eups setup salpytools -t $USER
-    ##########################################
-    eups declare -r . ts_linearStage -t $USER
-    eups setup ts_linearStage -t $USER
+.. code::
 
-Examples for running the linearStage are located in the bin/notebook directory.
+    from lsst.ts import salobj
+    linear_stage = salobj.Remote(name="LinearStage", domain=salobj.Domain(), index=1)
+
+.. code::
+
+    await linear_stage.cmd_getHome.set_start(timeout=10)
+    await linear_stage.cmd_moveAbsolute.set_start(distance=10, timeout=10)
+    await linear_stage.cmd_moveRelative.set_start(distance=10, timeout=10)
+    await linear_stage.cmd_stop.set_start(timeout=10)
+
+.. code::
+
+    position = await linear_stage.tel_position.aget()
+    print(position.position)
+
+Support
+=======
+N/A
+
+
+Roadmap
+=======
+N/A
+
+Contributing
+============
+N/A
+
+License
+=======
+This project is licensed under the `GPLv3 <https://www.gnu.org/licenses/gpl-3.0.en.html>`_.

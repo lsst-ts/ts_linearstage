@@ -1,15 +1,15 @@
 # import asyncio
 import unittest
 from lsst.ts import salobj
-from lsst.ts import linearStage
+from lsst.ts import LinearStage
 import asynctest
 
 
 class Harness:
     def __init__(self, initial_state):
         salobj.test_utils.set_random_lsst_dds_domain()
-        self.csc = linearStage.csc.LinearStageCSC(port="/dev/null", address=1, index=1)
-        self.csc.model._ls = linearStage.hardware.MockLinearStageComponent()
+        self.csc = LinearStage.csc.LinearStageCSC(port="/dev/null", address=1, index=1)
+        self.csc.model._ls = LinearStage.hardware.MockLinearStageComponent()
         self.remote = salobj.Remote(domain=self.csc.domain, name="LinearStage", index=1)
 
     async def __aenter__(self):
