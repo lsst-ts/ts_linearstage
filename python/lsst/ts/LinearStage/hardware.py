@@ -1,10 +1,4 @@
-""" This module is for the Zaber linear stage component according to SAL
-specifications.
-
-"""
-
-# TODO: Remove inheritance and add commander attribute
-# TODO: Start disconnected and add connection methods
+__all__ = ["LinearStageComponent"]
 
 from zaber import serial as zaber
 import logging

@@ -1,3 +1,5 @@
+__all__ = ["LinearStageCSC"]
+
 from lsst.ts.LinearStage.hardware import LinearStageComponent
 from lsst.ts.idl.enums import LinearStage
 from lsst.ts import salobj

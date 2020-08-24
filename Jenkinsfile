@@ -73,8 +73,8 @@ pipeline {
                     sh """
                     source /home/saluser/.setup_dev.sh || echo loading env failed. Continuing...
                     pip install .[dev]
-                    package-docs build
-                    ltd upload --product ts-linear-stage --git-ref ${GIT_BRANCH} --dir doc/_build/html
+                    package-docs build 
+                    ltd upload --product ts-linearstage --git-ref ${GIT_BRANCH} --dir doc/_build/html
                     """
                 }
             }

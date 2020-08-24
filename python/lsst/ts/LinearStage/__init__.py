@@ -1,4 +1,7 @@
+from .csc import *
+from .hardware import *
+
 try:
-    from . import csc, hardware
+    from .version import *
 except ImportError:
-    pass
+    __version__ = "?"
