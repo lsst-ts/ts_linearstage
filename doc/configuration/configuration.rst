@@ -1,13 +1,9 @@
-.. _Configuration_details:
-
 #########################
 LinearStage Configuration
 #########################
 
+The configuration files are located in the `mt_calsys_config repo <https://github.com/lsst-ts/ts_config_mtcalsys>`_.
 
-This section should include information pertinent to the CSC configuration.
-Items include: where the configuration files are located, which values in the file are most likely to be modified, a link to the schema.
-Also verify that the descriptions in the schema are sufficient to explain the appropriate values
+`Schema <https://github.com/lsst-ts/ts_LinearStage/blob/master/schema/LinearStage.yaml>`_
 
-Some subsystems also have more complex configuration files (e.g. binaries).
-Explanations of these files should be included, as well as a pointer to how they were created and what other artifacts may exist.
+The only parameter is to change the device address for the stage.

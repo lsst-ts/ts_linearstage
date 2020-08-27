@@ -1,46 +1,3 @@
-..
-  This is a template for documentation that will accompany each CSC.
-  It consists of a user guide and development guide, however, cross linking between the guides is expected.
-  This template is provided to ensure that the documentation remains similar in look, feel, and contents to users.
-  The headings below are expected to be present for all CSCs, but for many CSCs, additional fields will be required.
-  An example case can be found at https://ts-athexapod.lsst.io/v/develop/
-
-  ** All text in square brackets [] must be re-populated accordingly **
-
-  See https://developer.lsst.io/restructuredtext/style.html
-  for a guide to reStructuredText writing.
-
-  Use the following syntax for sections:
-
-  Sections
-  ========
-
-  and
-
-  Subsections
-  -----------
-
-  and
-
-  Subsubsections
-  ^^^^^^^^^^^^^^
-
-  To add images, add the image file (png, svg or jpeg preferred) to the
-  images/ directory. The reST syntax for adding the image is
-
-  .. figure:: /images/filename.ext
-   :name: fig-label
-
-  Caption text.
-
-  Feel free to delete this instructional comment.
-
-.. Fill out data so contacts section below is auto-populated
-.. |CSC_developer| replace::  *Replace-with-name-and-email*
-.. |CSC_product_owner| replace:: *Replace-with-name-and-email*
-
-.. Note that the "ts_" prefix is omitted from the title
-
 #########################
 LinearStage
 #########################
@@ -60,21 +17,20 @@ LinearStage
 
    **This CSC documentation is under development and not ready for active use.**
 
-.. _Overview:
+.. _index:overview:
 
 Overview
 ========
 
 :ref:`Contact info <ts_xml:index:master-csc-table:LinearStage>`
 
-[This section is to present an overview of the CSC.
-This should include a top-level description of the primary use-case(s) as well as any pertinent information.
-Example information may be link(s) to the higher-level classes which may be used to operate it, or mention of other CSCs (with links) that it operates in concert with.]
+The LinearStage controls a Zaber single axis linear stage.
+Its purpose is to provide motor control for calibration work done in the Calibration Lab.
 
 .. note:: If you are interested in viewing other branches of this repository append a `/v` to the end of the url link. For example `https://ts-linearstage.lsst.io/v/`
 
 
-.. _User_Documentation:
+.. _index:user-documentation:
 
 User Documentation
 ==================
@@ -90,7 +46,7 @@ User-level documentation, found at the link below, is aimed at personnel looking
     user-guide/user-guide
     :maxdepth: 2
 
-.. _Configuration:
+.. _index:configuration:
 
 Configuring the LinearStage
 =========================================
@@ -104,7 +60,7 @@ The configuration for the LinearStage is described at the following link.
     :maxdepth: 1
 
 
-.. _Development_Documentation:
+.. _index:development-documentation:
 
 Development Documentation
 =========================
@@ -120,7 +76,7 @@ This area of documentation focuses on the classes used, API's, and how to partic
     developer-guide/developer-guide
     :maxdepth: 1
 
-.. _Version_History:
+.. _index:version-history:
 
 Version History
 ===============

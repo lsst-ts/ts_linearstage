@@ -1,5 +1,3 @@
-.. _Version_History:
-
 ===============
 Version History
 ===============
@@ -10,8 +8,16 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
-v0.4.1
+Unreleased
+----------
+* Added documentation
+* Standardized repo layout
+
+v1.0.1
 ------
-* Added Jenkinsfile for conda recipe
-* Added conda recipe
-* Incorporated new offset parameters with the option of them being persistent (sticky)
+* Fixed CSC not starting
+
+v1.0.0
+------
+* Initial release
+* basic CSC
