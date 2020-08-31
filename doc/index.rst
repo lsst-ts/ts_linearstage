@@ -24,7 +24,7 @@ Overview
 
 :ref:`Contact info <ts_xml:index:master-csc-table:LinearStage>`
 
-The LinearStage controls a Zaber single axis linear stage.
+The LinearStage controls a `Zaber LST single axis linear stage <https://zaber.com/manuals/LST>`_.
 Its purpose is to provide motor control for calibration work done in the Calibration Lab.
 
 .. note:: If you are interested in viewing other branches of this repository append a `/v` to the end of the url link. For example `https://ts-linearstage.lsst.io/v/`

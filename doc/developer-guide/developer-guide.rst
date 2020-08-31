@@ -50,19 +50,28 @@ Build and Test
 
 Usage
 =====
+The deployment environment is a docker container for each LinearStage CSC used.
 
-Plug in the hardware.
+The LST stages use a RS-232 serial connector.
+You'll need a RS-232 to USB converter in order to plug the device into the computer.
+Plug in the usb cable into the computer.
+There should be a udev rule that changes the port location to ``/dev/ttyLinearStage``.
+Plugging in a second stage follows the same steps.
+You may need to create a udev rule in order to get a nice symbolic location for the device.
+If that rule does not exist, the device(s) will be found in ``/dev/ttyUSB{0,1}``
+
 
 .. code::
 
     run_linear_stage.py 1
+    # run_linear_stage.py 2 this is the index of the CSC
 
 .. _developer-guide:developer-guide:simulator:
 
 Simulator
 =========
 
-N/A
+There is an experimental (not-working) simulator for the LinearStage.
 
 
 .. _developer-guide:developer-guide:firmware:
@@ -70,13 +79,15 @@ N/A
 Updating Firmware of the LinearStage
 ====================================
 
-N/A
+The firmware for this stage cannot be updated.
 
 
 .. _developer-guide:developer-guide:documentation:
 
 Building the Documentation
 ==========================
+
+This is run from the CSC development container.
 
 .. code::
 

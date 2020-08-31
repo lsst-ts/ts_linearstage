@@ -3,7 +3,7 @@ ts-LinearStage
 ##############
 
 The LinearStage is a CSC for the Vera C. Rubin Observatory.
-It controls a Zaber linear motor.
+It provides controls for `Zaber LST stages <https://zaber.com/manuals/LST>`_.
 
 Installation
 ============
@@ -24,11 +24,18 @@ Run the ``develop-env`` docker image.
 
 Usage
 =====
+The LinearStage is an indexable component.
+The index refers to the id of the particular device.
 
 .. code::
 
     from lsst.ts import salobj
+    
     linear_stage = salobj.Remote(name="LinearStage", domain=salobj.Domain(), index=1)
+    linear_stage_2 = salobj.Remote(name="LinearStage", domain=salobj.Domain(), index=2)
+    
+    await linear_stage.start_task
+    await linear_stage_2.start_task
 
 .. code::
 
@@ -36,6 +43,8 @@ Usage
     await linear_stage.cmd_moveAbsolute.set_start(distance=10, timeout=10)
     await linear_stage.cmd_moveRelative.set_start(distance=10, timeout=10)
     await linear_stage.cmd_stop.set_start(timeout=10)
+
+    await asyncio.gather(*[linear_stage.cmd_moveAbsolute.set_start(distance=10, timeout=10), linear_stage_2.cmd_moveAbsolute.set_start(distance=10, timeout=10)]
 
 .. code::
 

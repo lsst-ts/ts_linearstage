@@ -33,7 +33,10 @@ Example Use-Case
     domain = salobj.Domain()
 
     linear_stage = salobj.Remote(name="LinearStage", domain=domain, index=1)
+    linear_stage_2 = salobj.Remote(name="LinearStage", domain=domain, index=2)
+
     await linear_stage.start_task
+    await linear_stage_2.start_task
 
 .. code::
 
@@ -41,7 +44,13 @@ Example Use-Case
     await linear_stage.cmd_moveAbsolute.set_start(position=20)
     await linear_stage.cmd_home.set_start(timeout=10)
 
+    await asyncio.gather(*[linear_stage.cmd_moveAbsolute.set_start(distance=10, timeout=10), linear_stage_2.cmd_moveAbsolute.set_start(distance=10, timeout=10)]
+
 .. code::
 
     position = await linear_stage.tel_position.aget()
+
+.. code::
+
+    await domain.close()
 
