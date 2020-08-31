@@ -35,6 +35,10 @@ class LinearStageComponent:
         This is a dictionary which contains all of the warning flags which
         correspond to what those flags mean.
 
+    steps_conversion : int
+        This is approximately the amount of steps in a millimeter for
+        this particular stage.
+
      """
 
     def __init__(self) -> None:
@@ -97,6 +101,7 @@ class LinearStageComponent:
             "NJ": "Joystick calibration is in progress. Moving the joystick will have no effect."
         }
         self.logger.debug("created LinearStageComponent")
+        self.steps_conversion = 8000
 
     def configure(self, config):
         self.port = config.port
@@ -134,7 +139,7 @@ class LinearStageComponent:
 
         """
         try:
-            reply = self.commander.send("move abs {}".format(int(value*8000)))
+            reply = self.commander.send("move abs {}".format(int(value*self.steps_conversion)))
             self.logger.debug(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary is False:
@@ -167,8 +172,8 @@ class LinearStageComponent:
 
         """
         try:
-            self.logger.debug("move rel {}".format(int(value * 8000)))
-            reply = self.commander.send("move rel {}".format(int(value * 8000)))
+            self.logger.debug("move rel {}".format(int(value * self.steps_conversion)))
+            reply = self.commander.send("move rel {}".format(int(value * self.steps_conversion)))
             self.logger.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary is False:
@@ -259,7 +264,7 @@ class LinearStageComponent:
             status_dictionary = self.check_reply(reply)
             if status_dictionary:
                 self.logger.info("Position captured")
-                return float(float(reply.data) / 8000)
+                return float(float(reply.data) / self.steps_conversion)
         except SerialException as e:
             self.logger.error(e)
             self.logger.info("Command for device timed out")
