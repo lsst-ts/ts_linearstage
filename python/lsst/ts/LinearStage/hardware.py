@@ -1,11 +1,4 @@
-""" This module is for the Zaber linear stage component according to SAL specifications
-
-"""
-
-# TODO: Add in Sphinx documentation
-# TODO: Finish up docstrings
-# TODO: Add module docstring
-# TODO: Add in Unit Tests
+__all__ = ["LinearStageComponent"]
 
 from zaber import serial as zaber
 import logging
@@ -13,7 +6,7 @@ from serial import SerialException
 import time
 
 
-class LinearStageComponent(zaber.AsciiDevice):
+class LinearStageComponent:
     """A class representing the linear stage device
 
     Parameters
@@ -39,15 +32,21 @@ class LinearStageComponent(zaber.AsciiDevice):
         corresponding to what they mean.
 
     warning_flag_dictionary : dict
-        This is a dictionary which contains all of the warning flags which correspond to what those flags
-        mean.
+        This is a dictionary which contains all of the warning flags which
+        correspond to what those flags mean.
+
+    steps_conversion : int
+        This is approximately the amount of steps in a millimeter for
+        this particular stage.
 
      """
 
-    def __init__(self, port: str, address: int) -> None:
+    def __init__(self) -> None:
         self.logger = logging.getLogger(__name__)
-        self.serial_port = port
-        self.device_address = address
+        self.connected = False
+        self.commander = None
+        self.serial_port = None
+        self.device_address = None
         self.address = 1
         self.position = None
         self.reply_flag_dictionary = {
@@ -102,15 +101,32 @@ class LinearStageComponent(zaber.AsciiDevice):
             "NJ": "Joystick calibration is in progress. Moving the joystick will have no effect."
         }
         self.logger.debug("created LinearStageComponent")
+        self.steps_conversion = 8000
+
+    def configure(self, config):
+        self.port = config.port
+        self.address = config.address
+
+    def connect(self):
+        self.commander = zaber.AsciiDevice(self.port, self.address)
+
+    def disconnect(self):
+        self.commander.close()
+        self.commander = None
 
     def move_absolute(self, value):
-        """This method moves the linear stage absolutely by the number of steps away from the starting
-        position. i.e. value=10 would mean the stage would move 10 millimeters away from the start.
+        """This method moves the linear stage absolutely by the number of
+        steps away from the starting position.
+        i.e. value=10 would mean the stage would move 10 millimeters away from
+        the start.
 
-        The method uses a try-catch block to handle the Timeout error exception. It sends the command which
-        returns a reply that is logged and then check for accepted or rejected status according to SAL
-        specifications. If the command is accepted then the command begins executing. The device is polled for
-        its status until the device is idle. If the command finishes successfully then it is logged and the
+        The method uses a try-catch block to handle the Timeout error
+        exception.
+        It sends the command which returns a reply that is logged and then
+        check for accepted or rejected status according to SAL specifications.
+        If the command is accepted then the command begins executing.
+        The device is polled for its status until the device is idle.
+        If the command finishes successfully then it is logged and the
         position is set by the get_position function.
 
         Parameters
@@ -123,7 +139,7 @@ class LinearStageComponent(zaber.AsciiDevice):
 
         """
         try:
-            reply = self.send("move abs {}".format(int(value*8000)))
+            reply = self.commander.send("move abs {}".format(int(value*self.steps_conversion)))
             self.logger.debug(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary is False:
@@ -136,11 +152,15 @@ class LinearStageComponent(zaber.AsciiDevice):
     def move_relative(self, value):
         """This method moves the linear stage relative to the current position.
 
-        This method begins by establishing a try-catch block which handles the timeout exception by logging
-        the error and proper SAL code. The command is then sent to the device where a reply is ostensibly
-        returned. The reply is checked for acknowledgement or rejection and handled accordingly. If the
-        command is accepted the device will perform the move and poll the device until it is idle
-        returning SAL codes. The position attribute is updated using the get_position function.
+        This method begins by establishing a try-catch block which handles the
+        timeout exception by logging the error and proper SAL code.
+        The command is then sent to the device where a reply is ostensibly
+        returned.
+        The reply is checked for acknowledgement or rejection and handled
+        accordingly.
+        If the command is accepted the device will perform the move and poll
+        the device until it is idle returning SAL codes.
+        The position attribute is updated using the get_position function.
 
         Parameters
         ----------
@@ -152,8 +172,8 @@ class LinearStageComponent(zaber.AsciiDevice):
 
         """
         try:
-            self.logger.debug("move rel {}".format(int(value * 8000)))
-            reply = self.send("move rel {}".format(int(value * 8000)))
+            self.logger.debug("move rel {}".format(int(value * self.steps_conversion)))
+            reply = self.commander.send("move rel {}".format(int(value * self.steps_conversion)))
             self.logger.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary is False:
@@ -165,14 +185,18 @@ class LinearStageComponent(zaber.AsciiDevice):
             raise
 
     def get_home(self):
-        """This method calls the homing method of the device which is used to establish a reference position.
+        """This method calls the homing method of the device which is used to
+        establish a reference position.
 
-        The method begins by forming an AsciiCommand for the home command. The try-catch block is then
-        established for the rest of the method in order to catch the timeout error and handle it
-        appropriately. The command is sent to the device and a reply is likely returned. The reply is then
-        checked for accepted or rejected status. If the command is accepted then the command begins to
-        perform. The device is polled until idle while returning the appropriate SAL codes. If the command
-        finishes successfully then the SAL code is logged.
+        The method begins by forming an AsciiCommand for the home command.
+        The try-catch block is then established for the rest of the method in
+        order to catch the timeout error and handle it appropriately.
+        The command is sent to the device and a reply is likely returned.
+        The reply is then checked for accepted or rejected status.
+        If the command is accepted then the command begins to perform.
+        The device is polled until idle while returning the appropriate SAL
+        codes.
+        If the command finishes successfully then the SAL code is logged.
 
         Parameters
         ----------
@@ -183,7 +207,7 @@ class LinearStageComponent(zaber.AsciiDevice):
         """
         cmd = zaber.AsciiCommand("{} home".format(self.address))
         try:
-            reply = self.send(cmd)
+            reply = self.commander.send(cmd)
             self.logger.info(reply)
             self.check_reply(reply)
         except SerialException as e:
@@ -192,11 +216,11 @@ class LinearStageComponent(zaber.AsciiDevice):
             raise
 
     def check_reply(self, reply):
-        """This method checks the reply for any warnings or errors and acknowledgement or rejection of the
-        command.
+        """This method checks the reply for any warnings or errors and
+        acknowledgement or rejection of the command.
 
-        This method has 4 if-else clauses that it checks for any normal or abnormal operation of the linear
-        stage.
+        This method has 4 if-else clauses that it checks for any normal or
+        abnormal operation of the linear stage.
 
         Parameters
         ----------
@@ -227,41 +251,28 @@ class LinearStageComponent(zaber.AsciiDevice):
     def get_position(self):
         """This method returns the position of the linear stage.
 
-        It works by sending a command to the device and ostensibly is given a reply. The reply is then checked
-        for acceptance or rejection by the device and the position is then set by the return of the reply's
-        data if successful.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
+        It works by sending a command to the device and ostensibly is given a
+        reply.
+        The reply is then checked for acceptance or rejection by the device
+        and the position is then set by the return of the reply's data if
+        successful.
 
         """
         try:
-            reply = self.send("get pos")
+            reply = self.commander.send("get pos")
             self.logger.debug(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary:
                 self.logger.info("Position captured")
-                return float(float(reply.data) / 8000)
+                return float(float(reply.data) / self.steps_conversion)
         except SerialException as e:
             self.logger.error(e)
             self.logger.info("Command for device timed out")
             raise e
 
-    def enable(self):
-        super(LinearStageComponent, self).__init__(zaber.AsciiSerial(self.serial_port), self.device_address)
-        self.port.open()
-        self.logger.info("port opened")
-
-    def disable(self):
-        self.port.close()
-        self.logger.info("port closed.")
-
     def retrieve_status(self):
         try:
-            reply = self.send("")
+            reply = self.commander.send("")
             self.logger.debug(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary:
@@ -273,7 +284,7 @@ class LinearStageComponent(zaber.AsciiDevice):
 
     def stop(self):
         try:
-            reply = self.send("stop")
+            reply = self.commander.send("stop")
             self.logger.debug(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary:
@@ -316,13 +327,3 @@ class MockLinearStageComponent:
             else:
                 self.position -= 0.1
             time.sleep(0.01)
-
-
-def main():
-    """ """
-    ls_1 = LinearStageComponent("/dev/ttyUSB0", 1)
-    ls_1.get_home()
-
-
-if __name__ == '__main__':
-    main()
