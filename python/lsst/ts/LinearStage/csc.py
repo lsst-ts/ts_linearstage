@@ -18,7 +18,8 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             initial_state=initial_state,
             simulation_mode=simulation_mode)
         self.component = LinearStageComponent()
-        self.evt_detailedState.set_put(detailedState=LinearStage.DetailedState(salobj.State.ENABLED))
+        self.evt_detailedState.set_put(
+            detailedState=LinearStage.DetailedState(LinearStage.DetailedState.NOTMOVINGSTATE))
 
     @property
     def detailed_state(self):
@@ -54,7 +55,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.detailed_state = LinearStage.DetailedState.MOVINGSTATE
         self.component.get_home()
         await asyncio.sleep(3)
-        self.detailed_state = LinearStage.DetailedState.ENABLEDSTATE
+        self.detailed_state = LinearStage.DetailedState.NOTMOVINGSTATE
 
     async def do_moveAbsolute(self, data):
         self.assert_enabled("moveAbsolute")
@@ -62,7 +63,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.detailed_state = LinearStage.DetailedState.MOVINGSTATE
         self.component.move_absolute(data.distance)
         await asyncio.sleep(3)
-        self.detailed_state = LinearStage.DetailedState.ENABLEDSTATE
+        self.detailed_state = LinearStage.DetailedState.NOTMOVINGSTATE
 
     async def do_moveRelative(self, data):
         self.assert_enabled("moveRelative")
@@ -70,9 +71,9 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.detailed_state = LinearStage.DetailedState.MOVINGSTATE
         self.component.move_relative(data.distance)
         await asyncio.sleep(3)
-        self.detailed_state = LinearStage.DetailedState.ENABLEDSTATE
+        self.detailed_state = LinearStage.DetailedState.NOTMOVINGSTATE
 
     async def do_stop(self, data):
         self.assert_enabled("stop")
         self.component.stop()
-        self.detailed_state = LinearStage.DetailedState.ENABLEDSTATE
+        self.detailed_state = LinearStage.DetailedState.NOTMOVINGSTATE
