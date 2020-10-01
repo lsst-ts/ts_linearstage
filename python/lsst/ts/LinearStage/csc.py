@@ -8,6 +8,8 @@ import pathlib
 
 
 class LinearStageCSC(salobj.ConfigurableCsc):
+    valid_simulation_modes = [0]
+
     def __init__(self, index, initial_state=salobj.State.STANDBY, config_dir=None, simulation_mode=0):
         schema_path = pathlib.Path(__file__).resolve().parents[4].joinpath("schema", "LinearStage.yaml")
         super().__init__(
@@ -20,6 +22,14 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.component = LinearStageComponent()
         self.evt_detailedState.set_put(
             detailedState=LinearStage.DetailedState(LinearStage.DetailedState.NOTMOVINGSTATE))
+        self.telemetry_task = salobj.make_done_future()
+
+    @staticmethod
+    def get_config_pkg():
+        return "ts_config_mtcalsys"
+
+    async def configure(self, config):
+        self.component.configure(config)
 
     @property
     def detailed_state(self):
@@ -44,10 +54,12 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         if self.disabled_or_enabled:
             if not self.component.connected:
                 self.component.connect()
-                asyncio.ensure_future(self.telemetry())
+            if self.telemetry_task.done():
+                self.telemetry_task = asyncio.create_task(self.telemetry())
         else:
-            self.component.disconnect()
-            self.telemetry.cancel
+            if self.component.connected:
+                self.component.disconnect()
+            self.telemetry_task.cancel()
 
     async def do_getHome(self, data):
         self.assert_enabled("getHome")

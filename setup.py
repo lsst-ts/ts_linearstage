@@ -27,7 +27,7 @@ setuptools.setup(
     package_data={"": ["*.rst", "*.yaml"]},
     data_files=[(os.path.join(data_files_path, "schema"),
                  ["schema/LinearStage.yaml"])],
-    scripts=["bin/runLinearStageCSC.py"],
+    scripts=["bin/run_linearstage_csc.py"],
     tests_require=tests_require,
     extras_require={"dev": dev_requires},
     license="GPL",
