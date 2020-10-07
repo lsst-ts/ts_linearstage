@@ -44,6 +44,9 @@ pipeline {
                         cd /home/saluser/repos/ts_idl
                         /home/saluser/.checkout_repo.sh ${work_branches}
                         git pull
+                        cd /home/saluser/repos/ts_config_mtcalsys
+                        /home/saluser/.checkout_repo.sh ${work_branches}
+                        git pull
                         make_idl_files.py LinearStage
                     """
                 }
