@@ -27,6 +27,7 @@ test:
         - ts-dds
         - ts-idl
         - ts-salobj
+        - zaber-serial
     source_files:
         - python
         - bin

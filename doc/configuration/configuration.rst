@@ -2,7 +2,7 @@
 LinearStage Configuration
 #########################
 
-The configuration files are located in the `mt_calsys_config repo <https://github.com/lsst-ts/ts_config_mtcalsys>`_.
+The configuration files are located in the `ts_config_mtcalsys repo <https://github.com/lsst-ts/ts_config_mtcalsys>`_.
 
 `Schema <https://github.com/lsst-ts/ts_LinearStage/blob/master/schema/LinearStage.yaml>`_
 

@@ -7,7 +7,7 @@ class TestLinearStageComponent:
 
     @pytest.fixture(scope="class")
     def lsc(self):
-        lsc = LinearStageComponent()
+        lsc = LinearStageComponent(simulation_mode=True)
         return lsc
 
     def test_command_accepted(self, lsc):
@@ -92,7 +92,7 @@ class TestLinearStageComponent:
                 "This flag is set if a movement operation is interrupted by a limit sensor "
                 "and the No Reference Position (WR) warning flag is not present."),
             ("WP", "The saved calibration data type for the specified peripheral.serial value "
-                "is unsupported by the current peripheralid."),
+                "is unsupported by the current peripheral id."),
             ("WV", "The supply voltage is outside the recommended operating range of the device. "
                 "Damage could result to the device if not remedied."),
             ("WT",
@@ -140,7 +140,7 @@ class TestLinearStageComponent:
                 "and the No Reference Position (WR) warning flag is not present."),
             ("WP",
                 "The saved calibration data type for the specified peripheral.serial value "
-                "is unsupported by the current peripheralid."),
+                "is unsupported by the current peripheral id."),
             ("WV",
                 "The supply voltage is outside the recommended operating range of the device. "
                 "Damage could result to the device if not remedied."),

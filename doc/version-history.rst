@@ -8,10 +8,12 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
-Unreleased
-----------
+v1.1.0 <Unreleased>
+-------------------
 * Added documentation
 * Standardized repo layout
+* Prepared CSC for salobj 6
+* Added simulator and simulation mode to CSC
 
 v1.0.1
 ------

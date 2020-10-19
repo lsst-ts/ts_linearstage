@@ -3,7 +3,9 @@ __all__ = ["LinearStageComponent"]
 from zaber import serial as zaber
 import logging
 from serial import SerialException
-import time
+import pty
+import os
+from lsst.ts.LinearStage.mock_server import MockSerial
 
 
 class LinearStageComponent:
@@ -12,40 +14,52 @@ class LinearStageComponent:
     Parameters
     ----------
 
-    port :
-        The serial port that the device is connected.
-
-    address :
-        The address of the device, typically 1 or 2 in this use case.
+    simulation_mode : `bool`
+        Is the stage in simulation mode.
 
     Attributes
     ----------
-    reply_queue : LinearStageQueue
-        A queue designed to hold replies connected to commands
+    log : `logging.Logger`
+        A log for the class.
 
-    position : str
+    connected : `bool`
+        Is the stage connected.
+
+    commander : `zaber.serial.AsciiDevice`
+        Commands the serial device.
+
+    serial_port : `str`
+        The name of the port for the device.
+
+    address : `int`
+        The address of the device along the chain.
+
+    position : `str`
         This holds the position of the linear stage. It starts at none as
         device requires homing to be done before it can be moved.
 
-    reply_flag_dictionary : dict
+    reply_flag_dictionary : `dict`
         This is a dictionary which contains all of the reply flags
         corresponding to what they mean.
 
-    warning_flag_dictionary : dict
+    warning_flag_dictionary : `dict`
         This is a dictionary which contains all of the warning flags which
         correspond to what those flags mean.
 
-    steps_conversion : int
+    steps_conversion : `int`
         This is approximately the amount of steps in a millimeter for
         this particular stage.
 
+    simulation_mode : `bool`
+        Is the hardware in simulation mode.
+
      """
 
-    def __init__(self) -> None:
-        self.logger = logging.getLogger(__name__)
+    def __init__(self, simulation_mode) -> None:
+        self.log = logging.getLogger(__name__)
         self.connected = False
         self.commander = None
-        self.serial_port = None
+        self.serial_port = "/home/saluser/dev/ttyLinearStage1"
         self.device_address = None
         self.address = 1
         self.position = None
@@ -85,7 +99,7 @@ class LinearStageComponent:
                   "This flag is set if a movement operation is interrupted by a limit sensor "
                   "and the No Reference Position (WR) warning flag is not present.",
             "WP": "The saved calibration data type for the specified peripheral.serial value "
-                  "is unsupported by the current peripheralid.",
+                  "is unsupported by the current peripheral id.",
             "WV": "The supply voltage is outside the recommended operating range of the device. "
                   "Damage could result to the device if not remedied.",
             "WT": "The internal temperature of the controller has exceeded the recommended limit for the "
@@ -100,25 +114,40 @@ class LinearStageComponent:
             "NU": "A setting is pending to be updated or a reset is pending.",
             "NJ": "Joystick calibration is in progress. Moving the joystick will have no effect."
         }
-        self.logger.debug("created LinearStageComponent")
         self.steps_conversion = 8000
+        self.simulation_mode = bool(simulation_mode)
+        self.log.info("created LinearStageComponent")
 
     def configure(self, config):
-        self.port = config.port
-        self.address = config.address
+        """Configure the settings.
+
+        Parameters
+        ----------
+        config : `types.SimpleNamespace`
+        """
+        if not self.simulation_mode:
+            self.serial_port = config.port
+            self.address = config.address
 
     def connect(self):
-        self.commander = zaber.AsciiDevice(self.port, self.address)
+        """Connect to the Stage."""
+        if self.simulation_mode is False:
+            self.commander = zaber.AsciiDevice(zaber.AsciiSerial(self.serial_port), self.address)
+        else:
+            main, reader = pty.openpty()
+            serial = zaber.AsciiSerial(os.ttyname(main))
+            serial._ser = MockSerial("")
+            self.commander = zaber.AsciiDevice(serial, self.address)
+        self.log.info("Connected")
 
     def disconnect(self):
-        self.commander.close()
+        """Disconnect from the stage."""
+        self.commander.port.close()
         self.commander = None
+        self.log.info("Disconnected")
 
     def move_absolute(self, value):
-        """This method moves the linear stage absolutely by the number of
-        steps away from the starting position.
-        i.e. value=10 would mean the stage would move 10 millimeters away from
-        the start.
+        """Move the stage using absolute position.
 
         The method uses a try-catch block to handle the Timeout error
         exception.
@@ -131,26 +160,29 @@ class LinearStageComponent:
 
         Parameters
         ----------
-        value :
+        value : `int`
             The number of millimeters(converted) to move the stage.
 
-        Returns
-        -------
+        Raises
+        ------
+        Exception
+            Raised when the command is rejected
+        e : `TimeoutError`
+            Raised when the serial port times out.
 
         """
         try:
             reply = self.commander.send("move abs {}".format(int(value*self.steps_conversion)))
-            self.logger.debug(reply)
+            self.log.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary is False:
                 raise Exception("Command rejected")
         except TimeoutError as e:
-            self.logger.error(e)
-            self.logger.info("Command timeout")
+            self.log.error(e)
             raise
 
     def move_relative(self, value):
-        """This method moves the linear stage relative to the current position.
+        """Move the stage using relative position.
 
         This method begins by establishing a try-catch block which handles the
         timeout exception by logging the error and proper SAL code.
@@ -164,29 +196,31 @@ class LinearStageComponent:
 
         Parameters
         ----------
-        value :
+        value : `int`
             The number of millimeters(converted) to move the stage.
 
-        Returns
-        -------
-
+        Raises
+        ------
+        Exception
+            Raised when command is rejected.
+        e : `TimeoutError`
+            Raised when serial port times out.
         """
         try:
-            self.logger.debug("move rel {}".format(int(value * self.steps_conversion)))
+            self.log.debug("move rel {}".format(int(value * self.steps_conversion)))
             reply = self.commander.send("move rel {}".format(int(value * self.steps_conversion)))
-            self.logger.info(reply)
+            self.log.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary is False:
                 raise Exception("Command rejected")
 
         except TimeoutError as e:
-            self.logger.error(e)
-            self.logger.info("Command timeout")
+            self.log.error(e)
+            self.log.info("Command timeout")
             raise
 
     def get_home(self):
-        """This method calls the homing method of the device which is used to
-        establish a reference position.
+        """Home the stage by returning to the beginning of the track.
 
         The method begins by forming an AsciiCommand for the home command.
         The try-catch block is then established for the rest of the method in
@@ -198,58 +232,58 @@ class LinearStageComponent:
         codes.
         If the command finishes successfully then the SAL code is logged.
 
-        Parameters
-        ----------
-
-        Returns
-        -------
+        Raises
+        ------
+        e : `SerialException`
+            Raised when the serial port has a problem.
 
         """
         cmd = zaber.AsciiCommand("{} home".format(self.address))
         try:
             reply = self.commander.send(cmd)
-            self.logger.info(reply)
+            self.log.info(reply)
             self.check_reply(reply)
         except SerialException as e:
-            self.logger.error(e)
-            self.logger.info("Command for device timed out")
+            self.log.error(e)
+            self.log.info("Command for device timed out")
             raise
 
     def check_reply(self, reply):
-        """This method checks the reply for any warnings or errors and
-        acknowledgement or rejection of the command.
+        """Check the reply for any issues/
 
         This method has 4 if-else clauses that it checks for any normal or
         abnormal operation of the linear stage.
 
         Parameters
         ----------
-        reply :
+        reply : `str`
             This is the reply that is to be checked.
 
         Returns
         -------
-
+        bool
+            Is the command accepted.
         """
+        self.log.info(reply)
         if reply.reply_flag == "RJ" and reply.warning_flag != "--":
-            self.logger.warning("Command rejected by device {} for {}".format(
+            self.log.warning("Command rejected by device {} for {}".format(
                 self.address, self.warning_flag_dictionary[reply.warning_flag]))
             return False
         elif reply.reply_flag == "RJ" and reply.warning_flag == "--":
-            self.logger.error("Command rejected due to {}".format(
+            self.log.error("Command rejected due to {}".format(
                 self.reply_flag_dictionary.get(reply.data, reply.data)))
             return False
         elif reply.reply_flag == "OK" and reply.warning_flag != "--":
-            self.logger.warning("Command accepted but probably would return improper result due to {}".format(
+            self.log.warning("Command accepted but probably would return improper result due to {}".format(
                 self.warning_flag_dictionary[reply.warning_flag]))
 
             return True
         else:
-            self.logger.info("Command accepted by device #{}".format(self.address))
+            self.log.info("Command accepted by device #{}".format(self.address))
             return True
 
     def get_position(self):
-        """This method returns the position of the linear stage.
+        """Return the position of the stage.
 
         It works by sending a command to the device and ostensibly is given a
         reply.
@@ -257,73 +291,72 @@ class LinearStageComponent:
         and the position is then set by the return of the reply's data if
         successful.
 
+        Returns
+        -------
+        float
+            The position of the stage.
+
+        Raises
+        ------
+        e : `serial.SerialException`
+            Raised when serial port has a problem.
         """
         try:
             reply = self.commander.send("get pos")
-            self.logger.debug(reply)
+            self.log.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary:
-                self.logger.info("Position captured")
+                self.log.info("Position captured")
                 return float(float(reply.data) / self.steps_conversion)
         except SerialException as e:
-            self.logger.error(e)
-            self.logger.info("Command for device timed out")
+            self.log.error(e)
+            self.log.info("Command for device timed out")
             raise e
 
     def retrieve_status(self):
+        """Return the status of the LinearStage.
+
+        Returns
+        -------
+        str
+            The status of the LinearStage.
+
+        Raises
+        ------
+        e : `serial.SerialException`
+            Raised when the serial port has a problem.
+
+        """
         try:
             reply = self.commander.send("")
-            self.logger.debug(reply)
+            self.log.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary:
-                self.logger.info("Status captured")
+                self.log.info("Status captured")
                 return reply.device_status
         except SerialException as e:
-            self.logger.error(e)
+            self.log.error(e)
             raise
 
+    def publish(self):
+        """Publish the telemetry of the stage."""
+        self.position = self.get_position()
+        self.status = self.retrieve_status()
+
     def stop(self):
+        """Stop the movement of the stage.
+
+        Raises
+        ------
+        e : `serial.SerialException`
+            Raised when the serial port has a problem.
+        """
         try:
             reply = self.commander.send("stop")
-            self.logger.debug(reply)
+            self.log.debug(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary:
-                self.logger.info("Device stopped")
+                self.log.info("Device stopped")
         except SerialException as e:
-            self.logger.error(e)
+            self.log.error(e)
             raise e
-
-
-class MockLinearStageComponent:
-    def __init__(self):
-        self.position = 35
-        self.status = "IDLE"
-        self.max_limit = 75
-        self.min_limit = 0
-
-    def get_position(self):
-        return self.position
-
-    def get_status(self):
-        return self.status
-
-    def get_home(self):
-        while self.position != 0:
-            self.position -= 0.1
-            time.sleep(0.01)
-
-    def move_relative(self, value):
-        while self.position != value:
-            if value > 0:
-                self.position += 0.1
-            else:
-                self.position -= 0.1
-            time.sleep(0.01)
-
-    def move_absolute(self, value):
-        while self.position != value:
-            if value > 0:
-                self.position += 0.1
-            else:
-                self.position -= 0.1
-            time.sleep(0.01)
