@@ -66,53 +66,53 @@ class LinearStageComponent:
         self.reply_flag_dictionary = {
             "BADDATA": "improperly formatted or invalid data",
             "AGAIN": "The command cannot be processed right now. "
-                     "The user or application should send the command again.",
+            "The user or application should send the command again.",
             "BADAXIS": "The command was sent with an axis number greater than the number of axes available.",
             "BADCOMMAND": "The command or setting is incorrect or invalid.",
             "BADMESSAGEID": "A message ID was provided, but was not either -- or a number from 0 to 99.",
             "DEVICEONLY": "An axis number was specified when trying to execute a device only command.",
             "FULL": "The device has run out of permanent storage and cannot accept the command.",
             "LOCKSTEP": "An axis cannot be moved using normal motion commands because it is part of a "
-                        "lockstep group.",
+            "lockstep group.",
             "NOACCESS": "The command or setting is not available at the current access level.",
             "PARKED": "The device cannot move because it is currently parked.",
             "STATUSBUSY": "The device cannot be parked, nor can certain settings be changed, "
-                          "because it is currently busy."
+            "because it is currently busy.",
         }
         self.warning_flag_dictionary = {
             "WR": "No reference position",
             "--": "No Warning",
             "FD": "The driver has disabled itself due to overheating.",
             "FQ": "The encoder-measured position may be unreliable. "
-                  "The encoder has encountered a read error due to poor sensor alignment, "
-                  "vibration, dirt or other environmental conditions.",
+            "The encoder has encountered a read error due to poor sensor alignment, "
+            "vibration, dirt or other environmental conditions.",
             "FS": "Stalling was detected and the axis has stopped itself.",
             "FT": "The lockstep group has exceeded allowable twist and has stopped.",
             "FB": "A previous streamed motion could not be executed because it failed a precondition "
-                  "(e.g. motion exceeds device bounds, calls nested too deeply).",
+            "(e.g. motion exceeds device bounds, calls nested too deeply).",
             "FP": "Streamed or sinusoidal motion was terminated because an axis slipped "
-                  "and thus the device deviated from the requested path.",
+            "and thus the device deviated from the requested path.",
             "FE": "The target limit sensor cannot be reached or is faulty.",
             "WH": "The device has a position reference, but has not been homed. "
-                  "As a result, calibration has been disabled.",
+            "As a result, calibration has been disabled.",
             "WL": "A movement operation did not complete due to a triggered limit sensor. "
-                  "This flag is set if a movement operation is interrupted by a limit sensor "
-                  "and the No Reference Position (WR) warning flag is not present.",
+            "This flag is set if a movement operation is interrupted by a limit sensor "
+            "and the No Reference Position (WR) warning flag is not present.",
             "WP": "The saved calibration data type for the specified peripheral.serial value "
-                  "is unsupported by the current peripheral id.",
+            "is unsupported by the current peripheral id.",
             "WV": "The supply voltage is outside the recommended operating range of the device. "
-                  "Damage could result to the device if not remedied.",
+            "Damage could result to the device if not remedied.",
             "WT": "The internal temperature of the controller has exceeded the recommended limit for the "
-                  "device.",
+            "device.",
             "WM": "While not in motion, the axis has been forced out of its position.",
             "NC": "Axis is busy due to manual control via the knob.",
             "NI": "A movement operation (command or manual control) was requested "
-                  "while the axis was executing another movement command. "
-                  "This indicates that a movement command did not complete.",
+            "while the axis was executing another movement command. "
+            "This indicates that a movement command did not complete.",
             "ND": "The device has slowed down while following a streamed motion path "
-                  "because it has run out of queued motions.",
+            "because it has run out of queued motions.",
             "NU": "A setting is pending to be updated or a reset is pending.",
-            "NJ": "Joystick calibration is in progress. Moving the joystick will have no effect."
+            "NJ": "Joystick calibration is in progress. Moving the joystick will have no effect.",
         }
         self.steps_conversion = 8000
         self.simulation_mode = bool(simulation_mode)
@@ -132,7 +132,9 @@ class LinearStageComponent:
     def connect(self):
         """Connect to the Stage."""
         if self.simulation_mode is False:
-            self.commander = zaber.AsciiDevice(zaber.AsciiSerial(self.serial_port), self.address)
+            self.commander = zaber.AsciiDevice(
+                zaber.AsciiSerial(self.serial_port), self.address
+            )
         else:
             main, reader = pty.openpty()
             serial = zaber.AsciiSerial(os.ttyname(main))
@@ -172,7 +174,9 @@ class LinearStageComponent:
 
         """
         try:
-            reply = self.commander.send("move abs {}".format(int(value*self.steps_conversion)))
+            reply = self.commander.send(
+                "move abs {}".format(int(value * self.steps_conversion))
+            )
             self.log.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary is False:
@@ -208,7 +212,9 @@ class LinearStageComponent:
         """
         try:
             self.log.debug("move rel {}".format(int(value * self.steps_conversion)))
-            reply = self.commander.send("move rel {}".format(int(value * self.steps_conversion)))
+            reply = self.commander.send(
+                "move rel {}".format(int(value * self.steps_conversion))
+            )
             self.log.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary is False:
@@ -266,16 +272,25 @@ class LinearStageComponent:
         """
         self.log.info(reply)
         if reply.reply_flag == "RJ" and reply.warning_flag != "--":
-            self.log.warning("Command rejected by device {} for {}".format(
-                self.address, self.warning_flag_dictionary[reply.warning_flag]))
+            self.log.warning(
+                "Command rejected by device {} for {}".format(
+                    self.address, self.warning_flag_dictionary[reply.warning_flag]
+                )
+            )
             return False
         elif reply.reply_flag == "RJ" and reply.warning_flag == "--":
-            self.log.error("Command rejected due to {}".format(
-                self.reply_flag_dictionary.get(reply.data, reply.data)))
+            self.log.error(
+                "Command rejected due to {}".format(
+                    self.reply_flag_dictionary.get(reply.data, reply.data)
+                )
+            )
             return False
         elif reply.reply_flag == "OK" and reply.warning_flag != "--":
-            self.log.warning("Command accepted but probably would return improper result due to {}".format(
-                self.warning_flag_dictionary[reply.warning_flag]))
+            self.log.warning(
+                "Command accepted but probably would return improper result due to {}".format(
+                    self.warning_flag_dictionary[reply.warning_flag]
+                )
+            )
 
             return True
         else:

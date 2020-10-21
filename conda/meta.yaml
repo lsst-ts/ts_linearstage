@@ -28,6 +28,8 @@ test:
         - ts-idl
         - ts-salobj
         - zaber-serial
+        - pytest-black
+        - black == 19.10b0
     source_files:
         - python
         - bin

@@ -46,20 +46,22 @@ class MockSerial:
     device : `MockLST`
     message_queue : `queue.Queue`
     """
+
     def __init__(
-            self,
-            port,
-            baudrate=9600,
-            bytesize=serial.EIGHTBITS,
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-            timeout=None,
-            xonxoff=False,
-            rtscts=False,
-            write_timeout=None,
-            dsrdtr=False,
-            inter_byte_timeout=None,
-            exclusive=None):
+        self,
+        port,
+        baudrate=9600,
+        bytesize=serial.EIGHTBITS,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        timeout=None,
+        xonxoff=False,
+        rtscts=False,
+        write_timeout=None,
+        dsrdtr=False,
+        inter_byte_timeout=None,
+        exclusive=None,
+    ):
         self.log = logging.getLogger(__name__)
         self.name = port
         self.baudrate = baudrate
@@ -124,6 +126,7 @@ class MockLST:
     device_number : `int`
 
     """
+
     def __init__(self):
         self.log = logging.getLogger(__name__)
         self.position = 0

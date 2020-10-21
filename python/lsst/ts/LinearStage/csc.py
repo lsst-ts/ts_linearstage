@@ -24,21 +24,37 @@ class LinearStageCSC(salobj.ConfigurableCsc):
     component : `LinearStageComponent`
     telemetry_task : `asyncio.Future`
     """
+
     valid_simulation_modes = (0, 1)
     """The valid simulation modes for the CSC."""
 
-    def __init__(self, index, initial_state=salobj.State.STANDBY, config_dir=None, simulation_mode=0):
-        schema_path = pathlib.Path(__file__).resolve().parents[4].joinpath("schema", "LinearStage.yaml")
+    def __init__(
+        self,
+        index,
+        initial_state=salobj.State.STANDBY,
+        config_dir=None,
+        simulation_mode=0,
+    ):
+        schema_path = (
+            pathlib.Path(__file__)
+            .resolve()
+            .parents[4]
+            .joinpath("schema", "LinearStage.yaml")
+        )
         super().__init__(
             name="LinearStage",
             index=index,
             schema_path=schema_path,
             config_dir=config_dir,
             initial_state=initial_state,
-            simulation_mode=simulation_mode)
+            simulation_mode=simulation_mode,
+        )
         self.component = LinearStageComponent(simulation_mode=bool(simulation_mode))
         self.evt_detailedState.set_put(
-            detailedState=LinearStage.DetailedState(LinearStage.DetailedState.NOTMOVINGSTATE))
+            detailedState=LinearStage.DetailedState(
+                LinearStage.DetailedState.NOTMOVINGSTATE
+            )
+        )
         self.telemetry_task = salobj.make_done_future()
         self.log.info("LinearStage CSC initialized")
 
@@ -90,7 +106,9 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             Raised when the command is not allowed in the current state.
         """
         if self.detailed_state == LinearStage.DetailedState.MOVINGSTATE:
-            raise salobj.ExpectedError(f"{action} not allowed in state {self.detailed_state}")
+            raise salobj.ExpectedError(
+                f"{action} not allowed in state {self.detailed_state}"
+            )
 
     async def telemetry(self):
         """Run the telemetry loop."""
