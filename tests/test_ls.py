@@ -1,13 +1,13 @@
-from lsst.ts.LinearStage.hardware import LinearStageComponent
+from lsst.ts.LinearStage.hardware import ZaberLSTStage
 from zaber.serial import AsciiReply
 import pytest
 
 
-class TestLinearStageComponent:
+class TestZaberLSTStage:
 
     @pytest.fixture(scope="class")
     def lsc(self):
-        lsc = LinearStageComponent()
+        lsc = ZaberLSTStage()
         return lsc
 
     def test_command_accepted(self, lsc):

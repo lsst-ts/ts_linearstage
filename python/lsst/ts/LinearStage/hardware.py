@@ -1,4 +1,4 @@
-__all__ = ["LinearStageComponent"]
+__all__ = ["ZaberLSTStage"]
 
 from zaber import serial as zaber
 import logging
@@ -6,7 +6,7 @@ from serial import SerialException
 import time
 
 
-class LinearStageComponent:
+class ZaberLSTStage:
     """A class representing the linear stage device
 
     Parameters
@@ -100,7 +100,7 @@ class LinearStageComponent:
             "NU": "A setting is pending to be updated or a reset is pending.",
             "NJ": "Joystick calibration is in progress. Moving the joystick will have no effect."
         }
-        self.logger.debug("created LinearStageComponent")
+        self.logger.debug("created ZaberLSTStage")
         self.steps_conversion = 8000
 
     def configure(self, config):

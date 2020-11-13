@@ -1,6 +1,6 @@
 __all__ = ["LinearStageCSC"]
 
-from lsst.ts.LinearStage.hardware import LinearStageComponent
+from lsst.ts.LinearStage.hardware import ZaberLSTStage
 from lsst.ts.idl.enums import LinearStage
 from lsst.ts import salobj
 import asyncio
@@ -19,7 +19,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             config_dir=config_dir,
             initial_state=initial_state,
             simulation_mode=simulation_mode)
-        self.component = LinearStageComponent()
+        self.component = ZaberLSTStage()
         self.evt_detailedState.set_put(
             detailedState=LinearStage.DetailedState(LinearStage.DetailedState.NOTMOVINGSTATE))
         self.telemetry_task = salobj.make_done_future()
