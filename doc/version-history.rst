@@ -1,6 +1,6 @@
-===============
+###############
 Version History
-===============
+###############
 
 .. At the time of writing the Version history/release notes are not yet standardized amongst CSCs.
 .. Until then, it is not expected that both a version history and a release_notes be maintained.
@@ -8,10 +8,18 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
-Unreleased
-----------
+v1.1.0 <Unreleased>
+===================
 * Added documentation
 * Standardized repo layout
+* Prepared CSC for salobj 6
+* Added simulator and simulation mode to CSC
+* Added black linter
+
+Requirements
+------------
+* ts_xml - v6.2.0
+* ts_salobj - v6.x
 
 v1.0.1
 ------
