@@ -1,6 +1,6 @@
 __all__ = ["LinearStageCSC"]
 
-from lsst.ts.LinearStage.hardware import ZaberLSTStage
+from lsst.ts.LinearStage.hardware import ZaberLSTStage, IgusLinearStageStepper
 from lsst.ts.idl.enums import LinearStage
 from lsst.ts import salobj
 import asyncio
@@ -19,7 +19,8 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             config_dir=config_dir,
             initial_state=initial_state,
             simulation_mode=simulation_mode)
-        self.component = ZaberLSTStage()
+        # self.component = ZaberLSTStage()
+        self.component = IgusLinearStageStepper()
         self.evt_detailedState.set_put(
             detailedState=LinearStage.DetailedState(LinearStage.DetailedState.NOTMOVINGSTATE))
         self.telemetry_task = salobj.make_done_future()
@@ -46,7 +47,8 @@ class LinearStageCSC(salobj.ConfigurableCsc):
 
     async def telemetry(self):
         while True:
-            self.component.publish()
+            # self.component.publish() # I think this is a bug? Need input from Eric
+            self.component.get_position()
             self.tel_position.set_put(position=self.component.position)
             await asyncio.sleep(self.heartbeat_interval)
 

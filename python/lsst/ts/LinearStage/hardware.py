@@ -1,9 +1,283 @@
-__all__ = ["ZaberLSTStage"]
+__all__ = ["ZaberLSTStage","IgusLinearStageStepper"]
 
 from zaber import serial as zaber
 import logging
 from serial import SerialException
-import time
+import socket
+
+
+class IgusLinearStageStepper:
+    """A class representing the Igus linear stage devices.
+    These devices are driven by stepper motors over a socket
+    using the Dryve v1 controller
+
+    Parameters
+    ----------
+
+    port :
+        The port used to establish the socket connection.
+
+    address :
+        The address of the dryve controller.
+
+    Attributes
+    ----------
+    reply_queue : LinearStageQueue
+        A queue designed to hold replies connected to commands
+
+    position : str
+        This holds the position of the linear stage. It starts at none as
+        device requires homing to be done before it can be moved.
+
+    reply_flag_dictionary : dict
+        This is a dictionary which contains all of the reply flags
+        corresponding to what they mean.
+
+    warning_flag_dictionary : dict
+        This is a dictionary which contains all of the warning flags which
+        correspond to what those flags mean.
+
+    steps_conversion : int
+        This is approximately the amount of steps in a millimeter for
+        this particular stage.
+
+     """
+
+    def __init__(self) -> None:
+        self.logger = logging.getLogger(__name__)
+        self.connected = False
+        self.commander = None
+        self.device_address = None
+        self.address = 1
+        self.position = None
+        self.reply_flag_dictionary = {
+            "BADDATA": "improperly formatted or invalid data",
+        }
+        self.warning_flag_dictionary = {
+            "WR": "No reference position",
+        }
+        self.steps_conversion = 8000 # Needs to move to configuration file
+        self.logger.debug("initialized IgusLinearStageStepper")
+
+    def configure(self, config):
+        self.port = config.socket_port
+        self.address = config.socket_address
+
+    def connect(self):
+        """ Opens socket to IGUS Stage. Note that dryve must be configured to
+        use MODBUS TCP, with a unit identifier of 1"""
+
+        try:
+            self.commander = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        except socket.error:
+            self.logger.debug('Failed to create socket')
+
+        self.commander.connect((self.address, self.port))
+        self.logger.debug(f'Socket created to {self.address} on port {self.port}')
+
+    def disconnect(self):
+        self.commander.close()
+        self.logger.debug(f'Socket Closed to {self.address} on port {self.port}')
+        self.commander = None
+
+    def move_absolute(self, value):
+        """This method moves the linear stage absolutely by the number of
+        steps away from the starting position.
+        i.e. value=10 would mean the stage would move 10 millimeters away from
+        the start.
+
+        The method uses a try-catch block to handle the Timeout error
+        exception.
+        It sends the command which returns a reply that is logged and then
+        check for accepted or rejected status according to SAL specifications.
+        If the command is accepted then the command begins executing.
+        The device is polled for its status until the device is idle.
+        If the command finishes successfully then it is logged and the
+        position is set by the get_position function.
+
+        Parameters
+        ----------
+        value :
+            The number of millimeters(converted) to move the stage.
+
+        Returns
+        -------
+
+        """
+        raise NotImplementedError
+
+        # try:
+        #     reply = self.commander.send("move abs {}".format(int(value*self.steps_conversion)))
+        #     self.logger.debug(reply)
+        #     status_dictionary = self.check_reply(reply)
+        #     if status_dictionary is False:
+        #         raise Exception("Command rejected")
+        # except TimeoutError as e:
+        #     self.logger.error(e)
+        #     self.logger.info("Command timeout")
+        #     raise
+
+    def move_relative(self, value):
+        """This method moves the linear stage relative to the current position.
+
+        This method begins by establishing a try-catch block which handles the
+        timeout exception by logging the error and proper SAL code.
+        The command is then sent to the device where a reply is ostensibly
+        returned.
+        The reply is checked for acknowledgement or rejection and handled
+        accordingly.
+        If the command is accepted the device will perform the move and poll
+        the device until it is idle returning SAL codes.
+        The position attribute is updated using the get_position function.
+
+        Parameters
+        ----------
+        value :
+            The number of millimeters(converted) to move the stage.
+
+        Returns
+        -------
+
+        """
+        raise NotImplementedError
+
+        # try:
+        #     self.logger.debug("move rel {}".format(int(value * self.steps_conversion)))
+        #     reply = self.commander.send("move rel {}".format(int(value * self.steps_conversion)))
+        #     self.logger.info(reply)
+        #     status_dictionary = self.check_reply(reply)
+        #     if status_dictionary is False:
+        #         raise Exception("Command rejected")
+        #
+        # except TimeoutError as e:
+        #     self.logger.error(e)
+        #     self.logger.info("Command timeout")
+        #     raise
+
+    def get_home(self):
+        """This method calls the homing method of the device which is used to
+        establish a reference position.
+
+        The method begins by forming an AsciiCommand for the home command.
+        The try-catch block is then established for the rest of the method in
+        order to catch the timeout error and handle it appropriately.
+        The command is sent to the device and a reply is likely returned.
+        The reply is then checked for accepted or rejected status.
+        If the command is accepted then the command begins to perform.
+        The device is polled until idle while returning the appropriate SAL
+        codes.
+        If the command finishes successfully then the SAL code is logged.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
+        """
+        raise NotImplementedError
+
+        # cmd = zaber.AsciiCommand("{} home".format(self.address))
+        # try:
+        #     reply = self.commander.send(cmd)
+        #     self.logger.info(reply)
+        #     self.check_reply(reply)
+        # except SerialException as e:
+        #     self.logger.error(e)
+        #     self.logger.info("Command for device timed out")
+        #     raise
+
+    def check_reply(self, reply):
+        """This method checks the reply for any warnings or errors and
+        acknowledgement or rejection of the command.
+
+        This method has 4 if-else clauses that it checks for any normal or
+        abnormal operation of the linear stage.
+
+        Parameters
+        ----------
+        reply :
+            This is the reply that is to be checked.
+
+        Returns
+        -------
+
+        """
+
+        raise NotImplementedError
+
+        # if reply.reply_flag == "RJ" and reply.warning_flag != "--":
+        #     self.logger.warning("Command rejected by device {} for {}".format(
+        #         self.address, self.warning_flag_dictionary[reply.warning_flag]))
+        #     return False
+        # elif reply.reply_flag == "RJ" and reply.warning_flag == "--":
+        #     self.logger.error("Command rejected due to {}".format(
+        #         self.reply_flag_dictionary.get(reply.data, reply.data)))
+        #     return False
+        # elif reply.reply_flag == "OK" and reply.warning_flag != "--":
+        #     self.logger.warning("Command accepted but probably would return improper result due to {}".format(
+        #         self.warning_flag_dictionary[reply.warning_flag]))
+        #
+        #     return True
+        # else:
+        #     self.logger.info("Command accepted by device #{}".format(self.address))
+        #     return True
+
+    def get_position(self):
+        """This method returns the position of the linear stage.
+
+        It works by sending a command to the device and ostensibly is given a
+        reply.
+        The reply is then checked for acceptance or rejection by the device
+        and the position is then set by the return of the reply's data if
+        successful.
+
+        """
+        raise NotImplementedError
+
+        # try:
+        #     reply = self.commander.send("get pos")
+        #     self.logger.debug(reply)
+        #     status_dictionary = self.check_reply(reply)
+        #     if status_dictionary:
+        #         self.logger.info("Position captured")
+        #         return float(float(reply.data) / self.steps_conversion)
+        # except SerialException as e:
+        #     self.logger.error(e)
+        #     self.logger.info("Command for device timed out")
+        #     raise e
+
+    def retrieve_status(self):
+        # Statusword 6041h
+        # Status request
+        status = [0, 0, 0, 0, 0, 13, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2]
+        status_array = bytearray(status)
+
+        response = self.send_telegram(status_array)
+        self.logger.debug(f'Sent status request, received {response}')
+
+        return response
+        # try:
+        #     reply = self.commander.send("")
+        #     self.logger.debug(reply)
+        #     status_dictionary = self.check_reply(reply)
+        #     if status_dictionary:
+        #         self.logger.info("Status captured")
+        #         return reply.device_status
+        # except SerialException as e:
+        #     self.logger.error(e)
+        #     raise
+
+    def stop(self):
+
+        raise NotImplementedError
+
+    def send_telegram(self, data):
+        # Send data via open socket
+        self.commander.send(data)
+        res = s.recv(24)
+        # Return response telegram
+        return list(res)
 
 
 class ZaberLSTStage:
@@ -45,7 +319,6 @@ class ZaberLSTStage:
         self.logger = logging.getLogger(__name__)
         self.connected = False
         self.commander = None
-        self.serial_port = None
         self.device_address = None
         self.address = 1
         self.position = None
@@ -104,8 +377,8 @@ class ZaberLSTStage:
         self.steps_conversion = 8000
 
     def configure(self, config):
-        self.port = config.port
-        self.address = config.address
+        self.port = config.serial_port
+        self.address = config.daisy_chain_address
 
     def connect(self):
         self.commander = zaber.AsciiDevice(self.port, self.address)
@@ -293,37 +566,38 @@ class ZaberLSTStage:
             self.logger.error(e)
             raise e
 
-
-class MockLinearStageComponent:
-    def __init__(self):
-        self.position = 35
-        self.status = "IDLE"
-        self.max_limit = 75
-        self.min_limit = 0
-
-    def get_position(self):
-        return self.position
-
-    def get_status(self):
-        return self.status
-
-    def get_home(self):
-        while self.position != 0:
-            self.position -= 0.1
-            time.sleep(0.01)
-
-    def move_relative(self, value):
-        while self.position != value:
-            if value > 0:
-                self.position += 0.1
-            else:
-                self.position -= 0.1
-            time.sleep(0.01)
-
-    def move_absolute(self, value):
-        while self.position != value:
-            if value > 0:
-                self.position += 0.1
-            else:
-                self.position -= 0.1
-            time.sleep(0.01)
+# The code below isn't used for anything... keeping it here for the moment
+# import time
+# class MockLinearStageComponent:
+#     def __init__(self):
+#         self.position = 35
+#         self.status = "IDLE"
+#         self.max_limit = 75
+#         self.min_limit = 0
+#
+#     def get_position(self):
+#         return self.position
+#
+#     def get_status(self):
+#         return self.status
+#
+#     def get_home(self):
+#         while self.position != 0:
+#             self.position -= 0.1
+#             time.sleep(0.01)
+#
+#     def move_relative(self, value):
+#         while self.position != value:
+#             if value > 0:
+#                 self.position += 0.1
+#             else:
+#                 self.position -= 0.1
+#             time.sleep(0.01)
+#
+#     def move_absolute(self, value):
+#         while self.position != value:
+#             if value > 0:
+#                 self.position += 0.1
+#             else:
+#                 self.position -= 0.1
+#             time.sleep(0.01)

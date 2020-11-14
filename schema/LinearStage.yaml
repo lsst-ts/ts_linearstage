@@ -1,14 +1,23 @@
 $schema: http://json-schema.org/draft-07/schema#
 $id: https://github.com/lsst-ts/ts_LinearStage/blob/master/schema/LinearStage.yaml
-title: LinearStage v1
+# title must end with one or more spaces followed by the schema version, which must begin with "v"
+title: LinearStage v2
 description: Schema for LinearStage configuration files
 type: object
 properties:
-    port:
+    serial_port:
         description: USB port for the serial interface
         type: string
         default: "/dev/ttyLinearStage1"
-    address:
-        description: The device address as located in the daisy chain
+    daisy_chain_address:
+        description: The daisy-chain device address as located in the daisy chain (for Zaber Devices only)
         type: number
         default: 1
+    socket_address:
+        description: The IP address to establish a socket connection (for use with Igus Dryve v1 controllers)
+        type: string
+        default: "0.0.0.0"
+    socket_port:
+        description: The network port to establish a socket connection (for use with Igus Dryve v1 controllers)
+        type: number
+        default: 502
