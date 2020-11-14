@@ -1,12 +1,16 @@
-from lsst.ts.LinearStage.hardware import ZaberLSTStage
+from lsst.ts.LinearStage.controllers.zaber_LST import ZaberLSTStage
 from zaber.serial import AsciiReply
 import pytest
+import logging
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
 
 
 class TestZaberLSTStage:
     @pytest.fixture(scope="class")
     def lsc(self):
-        lsc = ZaberLSTStage(simulation_mode=True)
+        lsc = ZaberLSTStage(simulation_mode=True, log=logger)
         return lsc
 
     def test_command_accepted(self, lsc):
