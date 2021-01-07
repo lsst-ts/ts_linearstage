@@ -1,0 +1,7 @@
+# Ticket used to create this file: DM-27546
+# Date created: 2020-11-13
+# Description: Updated v1 version to v2 format. This is a serial port (USB) connection.
+
+stage_type: "Zaber"
+serial_port: "/dev/ttyLinearStage1"
+daisy_chain_address: 1

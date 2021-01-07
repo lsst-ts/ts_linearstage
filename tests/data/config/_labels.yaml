@@ -1,0 +1,3 @@
+# Labels for recommended settings; a dict of label: config_file
+zaber: "zaber.yaml"
+igus: "igus.yaml"

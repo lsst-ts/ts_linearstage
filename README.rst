@@ -22,6 +22,13 @@ Requirements
 ------------
 Run the ``develop-env`` docker image.
 
+Black
+#####
+
+.. code::
+
+    pre-commit install
+
 Usage
 =====
 The LinearStage is an indexable component.

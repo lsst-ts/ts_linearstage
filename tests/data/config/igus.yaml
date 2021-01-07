@@ -1,0 +1,7 @@
+# Ticket used to create this file: DM-27546
+# Date created: 2020-11-13
+# Description: Configures socket connection to Igus Dryve v1 controller. Being tested on local network for the moment.
+
+stage_type: "Igus"
+socket_port: 502
+socket_address: "192.168.0.148"
