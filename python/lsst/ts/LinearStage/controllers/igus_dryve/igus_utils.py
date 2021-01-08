@@ -14,12 +14,18 @@ _STD_TIMEOUT = 5  # seconds
 
 async def read_telegram(reader, timeout=_STD_TIMEOUT):
     """Reads a telegram from the igus controller.
+
     This is required because it sends packets of different lengths
     Byte 6 tells how many additional bytes are sent.
     One can't read more bytes or it might start parsing the next message.
     This method reads 6 bytes, then determines how much to read, then
     reads the rest. It then reassembles the two reads into a single
     message and returns it.
+
+    Parameters
+    ----------
+    reader : `asyncio.StreamReader`
+    timeout : `float`
 
     Returns
     -------
@@ -35,7 +41,7 @@ async def read_telegram(reader, timeout=_STD_TIMEOUT):
     # self.log.debug(f'byte 5 of read is {prefix[5]}')
     if prefix[5] == 0:
         raise KeyError(
-            f"Command prefix has a length of 0 in byte 6, meaning command is not formatted correctly"
+            "Command prefix has a length of 0 in byte 6, meaning command is not formatted correctly"
         )
     suffix0 = await reader.read(prefix[5])
     suffix = list(suffix0)
@@ -91,6 +97,11 @@ async def interpret_read_telegram(self, telegram, mode):
     and 60 in hexadecimal. Byte 13 is 65 in decimal (41 in hexadecimal).
 
     Bits 0-7 of the statusword are in byte 19, bits 8-15 are in 20
+
+    Parameters
+    ----------
+    telegram : `bytearray`
+    mode : `int`
 
     """
     # A Statusword 6041h telegram

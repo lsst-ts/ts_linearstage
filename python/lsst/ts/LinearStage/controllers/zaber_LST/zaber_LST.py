@@ -280,7 +280,7 @@ class ZaberLSTStage:
 
         Raises
         ------
-        e : `SerialException`
+        e : `serial.SerialException`
             Raised when the serial port has a problem.
 
         """
