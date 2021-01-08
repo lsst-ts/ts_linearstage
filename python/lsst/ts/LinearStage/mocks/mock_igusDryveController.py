@@ -208,12 +208,12 @@ class MockIgusDryveController:
 
     def do_shutdown(self):
         """Transitions state from to switch_on_disabled to ready_to_switch_on
-         and publishes handshake.
+        and publishes handshake.
         Transitions can occur from multiple states.
         This sets
 
         Returns
-         -------
+        -------
         response_telegrams : `list`
             List of telegrams to send in response
 

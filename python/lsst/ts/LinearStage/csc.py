@@ -15,14 +15,14 @@ class LinearStageCSC(salobj.ConfigurableCsc):
     ----------
     index : `int`
         The index of the CSC.
-    initial_state : `salobj.State`, optional
+    initial_state : `lsst.ts.salobj.State`, optional
         The initial state of the CSC.
     config_dir : `pathlib.Path`, optional
     simulation_mode : `int`, optional
 
     Attributes
     ----------
-    component : `LinearStageComponent`
+    component : `ZaberLSTStage` or `IgusLinearStageStepper`
     telemetry_task : `asyncio.Future`
     """
 
@@ -117,6 +117,18 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.evt_detailedState.set_put(detailedState=new_sub_state)
 
     def assert_referenced(self, action):
+        """Assert the stage is referenced.
+
+        Parameters
+        ----------
+        action : `str`
+            The name of the command to check.
+
+        Raises
+        ------
+        lsst.ts.salobj.ExpectedError
+            Raised if the stage is not homed
+        """
         # Stage must be homed/referenced before attempting
         # an absolute positioning
         if not self.referenced:

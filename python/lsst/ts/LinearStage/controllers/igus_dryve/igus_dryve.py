@@ -934,8 +934,8 @@ class IgusLinearStageStepper:
         cmd : `list`
             The command to send,
             e.g. [0, 0, 0, 0, 0, 13, 0, 43, 13, 0, 0, 0,
-                  96, 65, 0, 0, 0, 0, 2]"
-                  telegrams_write["status_request"]
+            96, 65, 0, 0, 0, 0, 2]
+            telegrams_write["status_request"]
 
         return_response : `bool`
             Return a response?
