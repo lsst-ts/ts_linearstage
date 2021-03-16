@@ -1,11 +1,13 @@
 __all__ = ["LinearStageCSC"]
 
+from . import __version__
 from lsst.ts.LinearStage.controllers.igus_dryve import IgusLinearStageStepper
 from lsst.ts.LinearStage.controllers.zaber_LST import ZaberLSTStage
+from .config_schema import CONFIG_SCHEMA
+
 from lsst.ts.idl.enums import LinearStage
 from lsst.ts import salobj
 import asyncio
-import pathlib
 
 
 class LinearStageCSC(salobj.ConfigurableCsc):
@@ -28,6 +30,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
 
     valid_simulation_modes = (0, 1)
     """The valid simulation modes for the CSC."""
+    version = __version__
 
     def __init__(
         self,
@@ -36,16 +39,10 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         config_dir=None,
         simulation_mode=0,
     ):
-        schema_path = (
-            pathlib.Path(__file__)
-            .resolve()
-            .parents[4]
-            .joinpath("schema", "LinearStage.yaml")
-        )
         super().__init__(
             name="LinearStage",
             index=index,
-            schema_path=schema_path,
+            config_schema=CONFIG_SCHEMA,
             config_dir=config_dir,
             initial_state=initial_state,
             simulation_mode=simulation_mode,

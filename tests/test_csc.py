@@ -1,5 +1,4 @@
 import unittest
-import asynctest
 import pathlib
 import logging
 
@@ -15,7 +14,7 @@ TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "c
 CONFIGS = ["igus.yaml", "zaber.yaml"]
 
 
-class LinearStageCscTestCase(salobj.BaseCscTestCase, asynctest.TestCase):
+class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(
         self, index, initial_state, config_dir, simulation_mode, **kwargs
     ):
