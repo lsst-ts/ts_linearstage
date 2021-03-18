@@ -4,15 +4,15 @@ from lsst.ts.LinearStage.controllers.igus_dryve.igusDryveTelegrams import (
     telegrams_read,
     #    telegrams_read_errs,
 )
-import asynctest
+import unittest
 import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 
 
-class TestIgusLinearStageStepper(asynctest.TestCase):
-    async def setUp(self):
+class TestIgusLinearStageStepper(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
         self.lsc = IgusLinearStageStepper(simulation_mode=True, log=logger)
 
     async def test_connect_disconnect(self):
