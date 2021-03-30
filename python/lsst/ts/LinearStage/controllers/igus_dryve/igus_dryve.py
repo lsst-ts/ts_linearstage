@@ -61,7 +61,7 @@ class IgusLinearStageStepper:
     simulation_mode : `bool`
         Is the hardware in simulation mode.
 
-     """
+    """
 
     def __init__(self, simulation_mode, log) -> None:
         self.log = log.getChild("IgusLinearStageStepper")
@@ -211,15 +211,14 @@ class IgusLinearStageStepper:
         self.port = server_port
 
     async def stop_mock_ctrl(self):
-        """Stop the mock controller, if running.
-        """
+        """Stop the mock controller, if running."""
         mock_ctrl = self.mock_ctrl
         self.mock_ctrl = None
         if mock_ctrl:
             await mock_ctrl.stop()
 
     async def enable_motor(self, value):
-        """ This method enables the motor and gets it ready to move.
+        """This method enables the motor and gets it ready to move.
         This includes transitioning the controller into the enabled/ready
         state and removing the brake (if appropriate).
 

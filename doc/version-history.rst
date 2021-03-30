@@ -15,6 +15,8 @@ v1.1.0 <Unreleased>
 * Prepared CSC for salobj 6
 * Added simulator and simulation mode to CSC
 * Added black linter
+* Upgrade to black 20.8
+* Added igus drive support
 
 Requirements
 ------------
