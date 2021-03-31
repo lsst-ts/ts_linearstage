@@ -115,8 +115,7 @@ class MockSerial:
         self.log.info("Putting into queue")
 
     def close(self):
-        """Close the serial connection.
-        """
+        """Close the serial connection."""
         self.log.info("Closing serial connection")
 
 

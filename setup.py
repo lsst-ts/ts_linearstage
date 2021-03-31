@@ -10,7 +10,7 @@ tests_require = [
     "asynctest",
     "zaber.serial",
     "pytest-black",
-    "black==19.10b0",
+    "black==20.8b1",
 ]
 dev_requires = (
     install_requires + tests_require + ["documenteer[pipelines]", "pre-commit"]

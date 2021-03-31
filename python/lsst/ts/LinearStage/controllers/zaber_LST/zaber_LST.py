@@ -61,7 +61,7 @@ class ZaberLSTStage:
     simulation_mode : `bool`
         Is the hardware in simulation mode.
 
-     """
+    """
 
     def __init__(self, simulation_mode, log) -> None:
         self.log = log.getChild("ZaberLSTStage")
@@ -163,7 +163,7 @@ class ZaberLSTStage:
         self.log.info("Disconnected from stage")
 
     async def enable_motor(self, value):
-        """ This method enables the motor and gets it ready to move.
+        """This method enables the motor and gets it ready to move.
         This includes transitioning the controller into the enabled/ready
         state and removing the brake (if appropriate).
 

@@ -137,8 +137,7 @@ class MockIgusDryveController:
         return self.host, self.port
 
     async def stop(self, timeout=5):
-        """Stop the TCP/IP server.
-        """
+        """Stop the TCP/IP server."""
         if self.server is None:
             return
 
@@ -246,7 +245,7 @@ class MockIgusDryveController:
         response_telegrams : `list`
             List of telegrams to send in response
 
-         """
+        """
         if self.state in [
             "switch_on_disabled",
             "ready_to_switch_on",
@@ -350,9 +349,7 @@ class MockIgusDryveController:
         self.state = final_state
 
     def do_start_movement(self):
-        """Start motion for given mode (based on received 6040h telegram)
-
-        """
+        """Start motion for given mode (based on received 6040h telegram)"""
 
         # Not sure what happens yet when motion is happening.
         if self.mode == 6:
