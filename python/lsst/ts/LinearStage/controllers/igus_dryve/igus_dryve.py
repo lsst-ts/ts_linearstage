@@ -2,12 +2,14 @@ __all__ = ["IgusLinearStageStepper"]
 
 import asyncio
 import time
+import logging
 
 from lsst.ts import salobj
 from lsst.ts.LinearStage.mocks.mock_igusDryveController import MockIgusDryveController
 from lsst.ts.LinearStage.controllers.igus_dryve.igus_utils import (
     read_telegram,
     derive_handshake,
+    interpret_read_telegram,
 )
 
 from lsst.ts.LinearStage.controllers.igus_dryve.igusDryveTelegrams import (
@@ -18,6 +20,9 @@ from lsst.ts.LinearStage.controllers.igus_dryve.igusDryveTelegrams import (
 
 _LOCAL_HOST = "127.0.0.1"
 _STD_TIMEOUT = 20  # standard timeout
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
 
 
 class IgusLinearStageStepper:
@@ -76,6 +81,7 @@ class IgusLinearStageStepper:
         self.connection_timeout = 5
         self.position = None
         self.status = None
+        self.mode_num = None
 
         self.simulation_mode = bool(simulation_mode)
 
@@ -222,6 +228,8 @@ class IgusLinearStageStepper:
         This includes transitioning the controller into the enabled/ready
         state and removing the brake (if appropriate).
 
+        FIXME: This should also remove any fault conditions
+
         Parameters
         ----------
         value : `bool`
@@ -236,7 +244,12 @@ class IgusLinearStageStepper:
             await self.send_telegram(
                 telegrams_write["shutdown"], return_response=False, check_handshake=True
             )
-            await self.poll_until_result(telegrams_read["ready_to_switch_on"], byte20=6)
+            await self.poll_until_result(
+                [telegrams_read["ready_to_switch_on"]],  # byte20=6
+            )
+            # make sure we're in position mode
+            self.set_mode("position")
+
             # then switch on
             self.log.debug("From enable_motor, sending switch_on")
             await self.send_telegram(
@@ -244,7 +257,7 @@ class IgusLinearStageStepper:
                 return_response=False,
                 check_handshake=True,
             )
-            await self.poll_until_result(telegrams_read["switched_on"])
+            await self.poll_until_result([telegrams_read["switched_on"]])
             # then enable
             self.log.debug("From enable_motor, sending enable_operation")
             await self.send_telegram(
@@ -252,7 +265,7 @@ class IgusLinearStageStepper:
                 return_response=False,
                 check_handshake=True,
             )
-            await self.poll_until_result(telegrams_read["operation_enabled"])
+            await self.poll_until_result([telegrams_read["operation_enabled"]])
 
             # now set all the required drive parameters
             await self.set_drive_settings()
@@ -262,7 +275,7 @@ class IgusLinearStageStepper:
             await self.send_telegram(
                 telegrams_write["shutdown"], return_response=False, check_handshake=True
             )
-            await self.poll_until_result(telegrams_read["ready_to_switch_on"])
+            await self.poll_until_result([telegrams_read["ready_to_switch_on"]])
 
     async def set_drive_settings(self):
         """The dryve requires numerous parameters to be set, all of which
@@ -383,7 +396,9 @@ class IgusLinearStageStepper:
                 byte20,
             ]
         )
-        self.log.debug(f"About to send homing switch speed telegram of {telegram}")
+        self.log.debug(
+            f"About to send 6099h_01h, homing switch speed telegram of {telegram}"
+        )
         await self.send_telegram(telegram, return_response=False, check_handshake=True)
 
         # 6099h_02h Homing speeds Zero --> Speed at which it searches for zero
@@ -415,6 +430,9 @@ class IgusLinearStageStepper:
                 byte19,
                 byte20,
             ]
+        )
+        self.log.debug(
+            f"About to send 6099h_02h, homing speed zero telegram of {telegram}"
         )
         await self.send_telegram(telegram, return_response=False, check_handshake=True)
 
@@ -454,7 +472,7 @@ class IgusLinearStageStepper:
             ]
         )
         self.log.debug(
-            f"About to send homing acceleration telegram of {telegram}, "
+            f"About to send 609Ah, homing acceleration telegram of {telegram}, "
             f"which has value of {_homing_accel_rpm} rpm/min^2"
         )
         await self.send_telegram(telegram, return_response=False, check_handshake=True)
@@ -503,7 +521,7 @@ class IgusLinearStageStepper:
             ]
         )
         self.log.debug(
-            f"About to send Profile Velocity telegram of {telegram}, "
+            f"About to send 6081h, Profile Velocity telegram of {telegram}, "
             f"which has value of {_motion_speed_rpm} rpm"
         )
         await self.send_telegram(telegram, return_response=False, check_handshake=True)
@@ -533,7 +551,7 @@ class IgusLinearStageStepper:
                 0,
                 0,
                 96,
-                154,
+                131,
                 0,
                 0,
                 0,
@@ -545,14 +563,14 @@ class IgusLinearStageStepper:
             ]
         )
         self.log.debug(
-            f"About to send profile acceleration telegram of {telegram}, "
+            f"About to send 6083h, profile acceleration telegram of {telegram}, "
             f"which has value of {_motion_accel_rpm} rpm/min^2"
         )
         await self.send_telegram(telegram, return_response=False, check_handshake=True)
 
     async def poll_until_result(
         self,
-        result,
+        results,
         cmd=telegrams_write["status_request"],
         freq=2,
         timeout=_STD_TIMEOUT,
@@ -570,8 +588,9 @@ class IgusLinearStageStepper:
 
         Parameters
         ----------
-        result : `list`
-            Telegram expected to be returned from controller.
+        results : `list`
+            Telegrams(s) expected to be returned from controller that result
+             in success
 
         cmd : `list`
             Command to be send to controller while polling. Default is to
@@ -594,7 +613,7 @@ class IgusLinearStageStepper:
         start_time = time.time()
         receipt = None
         attempts = 0
-        while receipt != result:
+        while receipt not in results:
             # receipt = None
             receipt = await self.send_telegram(
                 cmd, timeout=timeout, return_response=True, check_handshake=False
@@ -603,38 +622,44 @@ class IgusLinearStageStepper:
 
             # The evaluation is probably best done using a for-loop
             # Can replace the following if required.
-
-            # Set bytes 19 and 20 as appropriate for comparison
-            if len(result) >= 19 + 1:
-                _byte19 = byte19 if byte19 is not None else result[19]
-                if len(result) >= 20 + 1:
-                    _byte20 = byte20 if byte20 is not None else result[20]
-
-            # Check if first part of the status is correct
-            if receipt[0:18] != result[0:18]:
-                # Now check if byte19 and byte20 are satisfied
+            for result in results:
+                # Set bytes 19 and 20 as appropriate for comparison
                 if len(result) >= 19 + 1:
-                    #
-                    b19_isTrue = (
-                        True if ((receipt[19] & _byte19) == receipt[19]) else False
-                    )
-                    if len(result) == 19 + 1 and b19_isTrue:
-                        # Status is only 19 characters and is the
-                        # same, can break
-                        break
-                    elif len(result) >= 20 + 1:
-                        b20_isTrue = (
-                            True if ((receipt[20] & _byte20) == receipt[20]) else False
+                    _byte19 = byte19 if byte19 is not None else result[19]
+                    if len(result) >= 20 + 1:
+                        _byte20 = byte20 if byte20 is not None else result[20]
+
+                # Check if first part of the status is correct
+                if receipt[0:18] != result[0:18]:
+                    # Now check if byte19 and byte20 are satisfied
+                    if len(result) >= 19 + 1:
+                        #
+                        b19_isTrue = (
+                            True if ((receipt[19] & _byte19) == receipt[19]) else False
                         )
-                        if b19_isTrue and b20_isTrue:
-                            # All bits satisfied, Can break
+                        if len(result) == 19 + 1 and b19_isTrue:
+                            # Status is only 19 characters and is the
+                            # same, can break
                             break
+                        elif len(result) >= 20 + 1:
+                            b20_isTrue = (
+                                True
+                                if ((receipt[20] & _byte20) == receipt[20])
+                                else False
+                            )
+                            if b19_isTrue and b20_isTrue:
+                                # All bits satisfied, Can break
+                                break
 
                 total_time = time.time() - start_time
                 if total_time > timeout:
+                    # try to interpret the last message
+                    interpretation = interpret_read_telegram(receipt, self.mode_num)
                     raise TimeoutError(
                         f"Polling time exceeded timeout of {timeout}s "
-                        f"without receiving expected result of: {result}"
+                        f"without receiving expected result of: \n {result} \n,"
+                        f"last received response was: \n {receipt}.\n"
+                        f"{interpretation}"
                     )
 
                 # Delay by frequency
@@ -647,8 +672,8 @@ class IgusLinearStageStepper:
 
             if byte19 is not None or byte20 is not None:
                 self.log.debug(
-                    f"Looking for \n {receipt} with bytes [19, 20] having a "
-                    f"minuimum of [{_byte19}, {_byte20}] set and got \n {result}"
+                    f"Looking for \n {result} with bytes [19, 20] having a "
+                    f"minimum of [{_byte19}, {_byte20}] set and got \n {receipt}"
                 )
             else:
                 self.log.debug(f"Looking for \n {receipt} and got \n {result}")
@@ -735,7 +760,9 @@ class IgusLinearStageStepper:
         self.log.debug(f"Starting to move to position {value} mm")
         await self.send_telegram(telegrams_write["start_motion"])
         # Now poll until target is reached
-        await self.poll_until_result(telegrams_read["target_reached"], timeout=timeout)
+        await self.poll_until_result(
+            [telegrams_read["target_reached"]], timeout=timeout
+        )
 
     def move_relative(self, value):
         """This method moves the linear stage relative to the current position.
@@ -776,9 +803,9 @@ class IgusLinearStageStepper:
         # this uses the 6060h telegram
 
         if mode == "homing":
-            mode_num = 6
+            self.mode_num = 6
         elif mode == "position":
-            mode_num = 1
+            self.mode_num = 1
         else:
             raise KeyError(f"Mode of {mode} is not supported.")
 
@@ -786,17 +813,59 @@ class IgusLinearStageStepper:
 
         # Set operation modes in object 6060h Modes of Operation
         _telegram = tuple(
-            [0, 0, 0, 0, 0, 14, 0, 43, 13, 1, 0, 0, 96, 96, 0, 0, 0, 0, 1, mode_num]
+            [
+                0,
+                0,
+                0,
+                0,
+                0,
+                14,
+                0,
+                43,
+                13,
+                1,
+                0,
+                0,
+                96,
+                96,
+                0,
+                0,
+                0,
+                0,
+                1,
+                self.mode_num,
+            ]
         )
 
         await self.send_telegram(
             _telegram, check_handshake=True, return_response=False, timeout=2
         )
         expected_result = tuple(
-            [0, 0, 0, 0, 0, 14, 0, 43, 13, 0, 0, 0, 96, 97, 0, 0, 0, 0, 1, mode_num]
+            [
+                0,
+                0,
+                0,
+                0,
+                0,
+                14,
+                0,
+                43,
+                13,
+                0,
+                0,
+                0,
+                96,
+                97,
+                0,
+                0,
+                0,
+                0,
+                1,
+                self.mode_num,
+            ]
         )
         # Now ask for mode and it must return the requested mode
-        await self.poll_until_result(expected_result, cmd=telegrams_write["get_mode"])
+        await self.poll_until_result([expected_result], cmd=telegrams_write["get_mode"])
         self.log.debug(f"Mode set to {mode}")
 
     async def get_home(self):
@@ -836,7 +905,7 @@ class IgusLinearStageStepper:
         # start motion
         self.log.debug("Starting motion")
         await self.send_telegram(telegrams_write["start_motion"])
-        await self.poll_until_result(telegrams_read["target_reached"], timeout=20)
+        await self.poll_until_result([telegrams_read["target_reached"]], timeout=20)
         # set position profiling mode (1 on byte 19)
         await self.set_mode("position")
 
@@ -938,6 +1007,7 @@ class IgusLinearStageStepper:
 
         return_response : `bool`
             Return a response?
+            FIXME: remove this functionality and always return a response
 
         check_handshake : `bool`
             Check that the expected handshake was received from controller

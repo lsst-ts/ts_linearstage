@@ -22,6 +22,11 @@ telegrams_write = {
     "get_position": tuple(
         [0, 0, 0, 0, 0, 13, 0, 43, 13, 0, 0, 0, 96, 100, 0, 0, 0, 0, 4]
     ),
+    # This is a fake behaviour to intentionally put the controller
+    # in an unexpected state for testing error handling.
+    "unexpected_response_check": tuple(
+        [0, 0, 0, 0, 0, 15, 0, 43, 13, 1, 0, 0, 96, 64, 0, 0, 0, 0, 2, 31, 0]
+    ),
 }
 telegrams_read = {
     # Status of initial state after powering on
@@ -52,6 +57,11 @@ telegrams_read = {
     "move_being_executed": tuple(
         [0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 39, 2]
     ),
+    # the following is only for testing error handling and the parsing
+    # of a telegram for interpretation given in error messages
+    "weird_state1": tuple(
+        [0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 39, 22]
+    ),
 }
 # These are the responses that you do not want to see from the
 # controller as it means something is not correct
@@ -64,3 +74,17 @@ telegrams_read_errs = {
         [0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 64, 4]
     ),
 }
+# What is this?
+# Received response telegram of
+# [0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 33, 22]
+#
+# DEBUG:LinearStage.IgusLinearStageStepper:Looking for
+#  (0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 8, 2)
+#  and got
+#  (0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 39, 22)
+
+# After power cycling CSC and trying to re-enable
+# DEBUG:LinearStage.IgusLinearStageStepper:Looking for
+#  (0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 33, 2)
+#  and got
+#  (0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 33, 6)

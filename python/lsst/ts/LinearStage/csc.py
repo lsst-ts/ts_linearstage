@@ -226,6 +226,8 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         try:
             await self.component.get_home()
         except Exception as e:
+            # reset the detailed state
+            self.detailed_state = LinearStage.DetailedState.NOTMOVINGSTATE
             err_msg = "Failed to home motor"
             self.fault(code=2, report=f"{err_msg}: {e}")
             raise e

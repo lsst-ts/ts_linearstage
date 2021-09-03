@@ -64,13 +64,13 @@ properties:
           Speed to use for standard travel motion in millimeters per second [mm/s] (for use with
           Igus Dryve v1 controllers)
         type: number
-        default: 50.0
+        default: 10.0
     motion_acceleration:
         description: >
           Acceleration to use for standard travel motion in millimeters per second squared [mm/s^2]
           (for use with Igus Dryve v1 controllers)
         type: number
-        default: 25
+        default: 4.16
 
 """
 )

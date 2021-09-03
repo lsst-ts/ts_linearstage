@@ -103,7 +103,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     await self.remote.cmd_getHome.set_start(timeout=10)
 
                     # At this point, with the igus stage, when you go back to
-                    # stanbdy it disables the motor (applies the brake),
+                    # standby it disables the motor (applies the brake),
                     # however, internal status can be held. Check that it
                     # can come back to enabled and move.
 
