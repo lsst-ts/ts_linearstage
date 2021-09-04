@@ -75,6 +75,8 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         config : `types.SimpleNamespace`
         """
         self.stage_type = config.stage_type
+        self.minimum_target_position = config.minimum_target_position
+        self.maximum_target_position = config.maximum_target_position
 
         self.log.debug(f"Stage type is {self.stage_type}")
         self.log.debug(f"Simulation mode number is {self.simulation_mode_number}")
@@ -149,6 +151,33 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         if self.detailed_state == LinearStage.DetailedState.MOVINGSTATE:
             raise salobj.ExpectedError(
                 f"DetailedState is MOVINGSTATE, {action} not allowed in state {self.detailed_state}"
+            )
+
+    def assert_target_in_range(self, target_value, move_type):
+        """Is the target out of range?
+
+        Parameters
+        ----------
+        target_value : `float`
+            The value to move
+        move_type: `str`
+            The type of movement, must be "relative" or "absolute"
+
+        Raises
+        ------
+        salobj.ExpectedError
+            Raised when the command is not allowed in the current state.
+        """
+        if move_type == "relative":
+            target_value = target_value + self.component.position
+
+        if (target_value > self.maximum_target_position) or (
+            target_value < self.minimum_target_position
+        ):
+            raise salobj.ExpectedError(
+                "Commanded {move_type} target position is not in the "
+                f"permitted range of {self.minimum_target_position} to"
+                f" {self.maximum_target_position} mm"
             )
 
     async def telemetry(self):
@@ -245,6 +274,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.assert_enabled("moveAbsolute")
         self.assert_notmoving("moveAbsolute")
         self.assert_referenced("moveAbsolute")
+        self.assert_target_in_range(data.distance, move_type="absolute")
 
         self.detailed_state = LinearStage.DetailedState.MOVINGSTATE
         self.log.debug("Executing moveAbsolute")
@@ -269,6 +299,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         """
         self.assert_enabled("moveRelative")
         self.assert_notmoving("moveRelative")
+        self.assert_target_in_range(data.distance, move_type="relative")
         self.detailed_state = LinearStage.DetailedState.MOVINGSTATE
         await self.component.move_relative(data.distance)
         self.detailed_state = LinearStage.DetailedState.NOTMOVINGSTATE

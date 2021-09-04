@@ -14,6 +14,16 @@ properties:
         description: Type of stage being controlled. Must be "Igus" or "Zaber"
         type: string
         default: 'Zaber'
+    minimum_target_position:
+        description: >
+          Minimum target position in mm
+        type: number
+        default: 5
+    maximum_target_position:
+        description: >
+          Maximum target position in mm
+        type: number
+        default: 70
     serial_port:
         description: USB port for the serial interface
         type: string
@@ -36,7 +46,6 @@ properties:
           controllers)
         type: number
         default: 502
-
     feed_rate:
         description: >
           Distance of travel [mm] per single motor rotation (for use with Igus Dryve v1

@@ -702,6 +702,8 @@ class IgusLinearStageStepper:
         """
 
         # Check the demand is within the allowed range
+        # Note that this may permit the hitting of limit switches
+        # the CSC limits the range based on configurations
         if value < 0 or value > self.maximum_stroke:
             raise ValueError(
                 f"Demanded position of {value} is not between zero and {self.maximum_stroke}"
@@ -764,28 +766,22 @@ class IgusLinearStageStepper:
             [telegrams_read["target_reached"]], timeout=timeout
         )
 
-    def move_relative(self, value):
+    async def move_relative(self, value, timeout=20):
         """This method moves the linear stage relative to the current position.
-
-        This method begins by establishing a try-catch block which handles the
-        timeout exception by logging the error and proper SAL code.
-        The command is then sent to the device where a reply is ostensibly
-        returned.
-        The reply is checked for acknowledgement or rejection and handled
-        accordingly.
-        If the command is accepted the device will perform the move and poll
-        the device until it is idle returning SAL codes.
-        The position attribute is updated using the get_position function.
+        The method basically wraps the absolute positioning code.
 
         Parameters
         ----------
         value :
-            The number of millimeters(converted) to move the stage.
+            The number of millimeters to move the stage.
 
         Returns
         -------
 
         """
+
+        target_position = self.position + value
+        await self.move_absolute(self, target_position, timeout=20)
         raise NotImplementedError("Only absolute positioning is currently supported.")
 
     async def set_mode(self, mode):

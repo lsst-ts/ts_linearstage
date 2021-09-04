@@ -2,7 +2,6 @@ import unittest
 import pathlib
 import logging
 import asyncio
-import pytest
 
 from lsst.ts import salobj
 from lsst.ts import LinearStage
@@ -110,7 +109,6 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     # however, internal status can be held. Check that it
                     # can come back to enabled and move.
 
-    @pytest.mark.absolute
     async def test_moveAbsolute(self):
         for config in CONFIGS:
             with self.subTest(config=config):
@@ -157,17 +155,24 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     )
 
     async def test_moveRelative(self):
-        async with self.make_csc(
-            index=1, initial_state=salobj.State.ENABLED, simulation_mode=1
-        ):
-            await self.remote.cmd_moveRelative.set_start(distance=10, timeout=15)
-            await self.assert_next_sample(
-                topic=self.remote.tel_position, flush=True, position=10
-            )
-            await self.remote.cmd_moveRelative.set_start(distance=10, timeout=15)
-            await self.assert_next_sample(
-                topic=self.remote.tel_position, flush=True, position=20
-            )
+        for config in CONFIGS:
+            with self.subTest(config=config):
+                logger.debug(f"Using config of {config}")
+                async with self.make_csc(
+                    index=1, initial_state=salobj.State.ENABLED, simulation_mode=1
+                ):
+                    await self.remote.cmd_moveRelative.set_start(
+                        distance=10, timeout=15
+                    )
+                    await self.assert_next_sample(
+                        topic=self.remote.tel_position, flush=True, position=10
+                    )
+                    await self.remote.cmd_moveRelative.set_start(
+                        distance=10, timeout=15
+                    )
+                    await self.assert_next_sample(
+                        topic=self.remote.tel_position, flush=True, position=20
+                    )
 
     # async def test_checkMotorInternalStatusPreservation(self):
     #     with self.subTest(config="igus"):
