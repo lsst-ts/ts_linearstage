@@ -1,6 +1,8 @@
 import unittest
 import pathlib
 import logging
+import asyncio
+import pytest
 
 from lsst.ts import salobj
 from lsst.ts import LinearStage
@@ -8,6 +10,7 @@ from lsst.ts.idl.enums.LinearStage import DetailedState
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
+logger.propagate = True
 
 TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
 
@@ -107,6 +110,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     # however, internal status can be held. Check that it
                     # can come back to enabled and move.
 
+    @pytest.mark.absolute
     async def test_moveAbsolute(self):
         for config in CONFIGS:
             with self.subTest(config=config):
@@ -143,7 +147,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     await self.remote.cmd_moveAbsolute.set_start(
                         distance=_dist, timeout=15
                     )
-
+                    await asyncio.sleep(1.5)
                     await self.assert_next_sample(
                         topic=self.remote.evt_detailedState,
                         detailedState=DetailedState.NOTMOVINGSTATE,

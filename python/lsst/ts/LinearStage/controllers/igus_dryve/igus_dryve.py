@@ -207,7 +207,7 @@ class IgusLinearStageStepper:
         assert self.simulation_mode == 1
         port = self.port
         host = _LOCAL_HOST
-        self.mock_ctrl = MockIgusDryveController(port=port, host=host)
+        self.mock_ctrl = MockIgusDryveController(port=port, host=host, log=self.log)
         server_host, server_port = await asyncio.wait_for(
             self.mock_ctrl.start(), timeout=2
         )
@@ -248,7 +248,7 @@ class IgusLinearStageStepper:
                 [telegrams_read["ready_to_switch_on"]],  # byte20=6
             )
             # make sure we're in position mode
-            self.set_mode("position")
+            await self.set_mode("position")
 
             # then switch on
             self.log.debug("From enable_motor, sending switch_on")
@@ -942,6 +942,7 @@ class IgusLinearStageStepper:
 
         # Get encoder position from 6064h
         # how do you know what this is?
+        self.log.debug("Sending get_position telegram")
         response_telegram = await self.send_telegram(
             telegrams_write["get_position"], check_handshake=False
         )

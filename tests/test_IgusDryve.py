@@ -12,6 +12,7 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
+logger.propagate = True
 
 
 class TestIgusLinearStageStepper(unittest.IsolatedAsyncioTestCase):

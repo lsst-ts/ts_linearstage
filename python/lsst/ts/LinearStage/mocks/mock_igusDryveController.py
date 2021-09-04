@@ -30,10 +30,6 @@ from lsst.ts.LinearStage.controllers.igus_dryve.igus_utils import (
     read_telegram,
     derive_handshake,
 )
-import logging
-
-logging.basicConfig()
-logger = logging.getLogger(__name__)
 
 _STD_TIMEOUT = 5  # seconds
 
@@ -62,13 +58,13 @@ class MockIgusDryveController:
     * Nothing works yet
     """
 
-    def __init__(self, port, host):
+    def __init__(self, port, host, log):
         # If port == 0 then this will be updated to the actual port
         # in `start`, right after the TCP/IP server is created.
         self.port = port
         self.host = host
 
-        self.log = logging.getLogger("MockIgusDryveController")
+        self.log = log.getChild("MockIgusDryveController")
         self.server = None
 
         # Possible incoming/outgoing telegrams
@@ -356,7 +352,17 @@ class MockIgusDryveController:
             time_to_target = (
                 self.target_pos - self.current_pos
             ) / self.motion_speed_mm_per_s
-            await asyncio.sleep(time_to_target)
+            self.log.debug(f"Estimated time to target is {time_to_target} seconds")
+            _time = 0
+            if interval is None:
+                while _time < time_to_target:
+                    self.current_pos = (
+                        self.current_pos
+                        + _time / time_to_target * self.motion_speed_mm_per_s
+                    )
+                    await asyncio.sleep(1)
+                    _time += 1
+                await asyncio.sleep(time_to_target)
             self.current_pos = self.target_pos
 
         elif self.mode == 6:  # homing

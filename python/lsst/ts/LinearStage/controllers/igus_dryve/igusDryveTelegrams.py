@@ -25,7 +25,7 @@ telegrams_write = {
     # This is a fake behaviour to intentionally put the controller
     # in an unexpected state for testing error handling.
     "unexpected_response_check": tuple(
-        [0, 0, 0, 0, 0, 15, 0, 43, 13, 1, 0, 0, 96, 64, 0, 0, 0, 0, 2, 31, 0]
+        [0, 0, 0, 0, 0, 15, 0, 43, 13, 1, 0, 0, 96, 64, 0, 0, 0, 0, 2, 30, 2]
     ),
 }
 telegrams_read = {
