@@ -75,8 +75,8 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         config : `types.SimpleNamespace`
         """
         self.stage_type = config.stage_type
-        self.minimum_target_position = config.minimum_target_position
-        self.maximum_target_position = config.maximum_target_position
+        self.target_position_minimum = config.target_position_minimum
+        self.target_position_maximum = config.target_position_maximum
 
         self.log.debug(f"Stage type is {self.stage_type}")
         self.log.debug(f"Simulation mode number is {self.simulation_mode_number}")
@@ -171,13 +171,13 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         if move_type == "relative":
             target_value = target_value + self.component.position
 
-        if (target_value > self.maximum_target_position) or (
-            target_value < self.minimum_target_position
+        if (target_value > self.target_position_maximum) or (
+            target_value < self.target_position_minimum
         ):
             raise salobj.ExpectedError(
-                "Commanded {move_type} target position is not in the "
-                f"permitted range of {self.minimum_target_position} to"
-                f" {self.maximum_target_position} mm"
+                f"Commanded {move_type} target position is not in the "
+                f"permitted range of {self.target_position_minimum} to"
+                f" {self.target_position_maximum} mm"
             )
 
     async def telemetry(self):

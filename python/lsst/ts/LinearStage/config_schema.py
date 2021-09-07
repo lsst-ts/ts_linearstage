@@ -9,17 +9,18 @@ $id: https://github.com/lsst-ts/ts_LinearStage/blob/master/schema/LinearStage.ya
 title: LinearStage v2
 description: Schema for LinearStage configuration files
 type: object
+additionalProperties: false
 properties:
     stage_type:
         description: Type of stage being controlled. Must be "Igus" or "Zaber"
         type: string
         default: 'Zaber'
-    minimum_target_position:
+    target_position_minimum:
         description: >
           Minimum target position in mm
         type: number
         default: 5
-    maximum_target_position:
+    target_position_maximum:
         description: >
           Maximum target position in mm
         type: number

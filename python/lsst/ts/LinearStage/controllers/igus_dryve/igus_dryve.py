@@ -781,8 +781,7 @@ class IgusLinearStageStepper:
         """
 
         target_position = self.position + value
-        await self.move_absolute(self, target_position, timeout=20)
-        raise NotImplementedError("Only absolute positioning is currently supported.")
+        await self.move_absolute(target_position, timeout=20)
 
     async def set_mode(self, mode):
         """Sets the mode for the igus controller.
