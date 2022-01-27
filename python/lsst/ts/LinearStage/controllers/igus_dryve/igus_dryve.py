@@ -97,6 +97,7 @@ class IgusLinearStageStepper:
         self.feed_constant = config.feed_rate
         self.homing_speed = config.homing_speed
         self.homing_acceleration = config.homing_acceleration
+        self.homing_timeout = config.homing_timeout
         self.motion_speed = config.motion_speed
         self.motion_acceleration = config.motion_acceleration
         self.maximum_stroke = config.maximum_stroke
@@ -866,7 +867,7 @@ class IgusLinearStageStepper:
         await self.poll_until_result([expected_result], cmd=telegrams_write["get_mode"])
         self.log.debug(f"Mode set to {mode}")
 
-    async def get_home(self, timeout=150):
+    async def get_home(self):
         """This method calls the homing method of the device which is used to
         establish a reference position.
 
@@ -903,7 +904,7 @@ class IgusLinearStageStepper:
         # start motion
         self.log.debug("Starting motion")
         await self.send_telegram(telegrams_write["start_motion"])
-        await self.poll_until_result([telegrams_read["target_reached"]], timeout=timeout)
+        await self.poll_until_result([telegrams_read["target_reached"]], timeout=self.homing_timeout)
         # set position profiling mode (1 on byte 19)
         await self.set_mode("position")
 

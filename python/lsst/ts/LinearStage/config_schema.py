@@ -69,6 +69,11 @@ properties:
           Igus Dryve v1 controllers)
         type: number
         default: 5
+    homing_timeout:
+        description: >
+          Amount of time to wait for homing to complete before timing out.
+        type: number
+        default: 60
     motion_speed:
         description: >
           Speed to use for standard travel motion in millimeters per second [mm/s] (for use with
