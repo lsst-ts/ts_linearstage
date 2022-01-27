@@ -270,6 +270,9 @@ class IgusLinearStageStepper:
             # now set all the required drive parameters
             await self.set_drive_settings()
         else:
+            # make sure we're in position mode
+            await self.set_mode("position")
+
             # Disable the motor
             self.log.debug("From enable_motor, sending Shutdown")
             await self.send_telegram(

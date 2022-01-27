@@ -62,7 +62,7 @@ properties:
           Speed to use for homing in millimeters per second [mm/s] (for use with Igus Dryve v1
           controllers)
         type: number
-        default: 30.0
+        default: 20.0
     homing_acceleration:
         description: >
           Acceleration to use for homing in millimeters per second squared [mm/s^2] (for use with
