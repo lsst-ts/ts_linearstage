@@ -253,7 +253,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.assert_notmoving("getHome")
         self.detailed_state = LinearStage.DetailedState.MOVINGSTATE
         try:
-            await self.component.get_home(timeout=data.timeout)
+            await self.component.get_home()
         except Exception as e:
             # reset the detailed state
             self.detailed_state = LinearStage.DetailedState.NOTMOVINGSTATE

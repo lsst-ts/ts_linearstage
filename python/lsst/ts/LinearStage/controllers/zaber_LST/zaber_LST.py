@@ -265,7 +265,7 @@ class ZaberLSTStage:
         # Wait 3s for stage to complete motion
         await asyncio.sleep(_ZABER_MOVEMENT_TIME)
 
-    async def get_home(self, data):
+    async def get_home(self):
         """Home the Zaber stage by returning to the beginning of the track.
 
         The method begins by forming an AsciiCommand for the home command.
