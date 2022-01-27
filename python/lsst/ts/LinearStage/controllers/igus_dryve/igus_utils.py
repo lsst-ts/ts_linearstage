@@ -198,6 +198,11 @@ def interpret_read_telegram(telegram, mode):
                     f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled, "
                     f"Target Reached"
                 )
+            elif telegram[20] == 18:  # 10010
+                msg = msg + (
+                    f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled, "
+                    f"Target NOT Reached, setpoint applied."
+                )
             else:
                 msg = (
                     msg
