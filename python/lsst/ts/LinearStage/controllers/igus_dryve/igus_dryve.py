@@ -486,10 +486,9 @@ class IgusLinearStageStepper:
 
         # 6081h Profile Velocity
         # Must be multiplied by 100 (_multi_factor)
-        # This needs to be in RPM, but the config file
-        # (and self.feed_constant) is in mm/s
+        # This needs to be in mm/s
         _motion_speed_rpm = round(
-            self.motion_speed / self.feed_constant * 60 * _multi_factor
+            self.motion_speed * _multi_factor
         )
         if _motion_speed_rpm > 2 ** 16:
             # Catch this here because diagnosing the error is tough
@@ -531,10 +530,10 @@ class IgusLinearStageStepper:
         await self.send_telegram(telegram, return_response=False, check_handshake=True)
 
         # 6083h Profile Acceleration
-        # Needs to be in rpm/min^2
+        # Needs to be in mm/s^2
         # Must be multiplied by 100 (_multi_factor)
         _motion_accel_rpm = round(
-            self.motion_acceleration / self.feed_constant * 60 * 60 * _multi_factor
+            self.motion_acceleration * _multi_factor
         )
 
         byte19 = _motion_accel_rpm & 0b11111111
