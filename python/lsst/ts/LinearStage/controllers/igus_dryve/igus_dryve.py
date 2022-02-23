@@ -487,9 +487,7 @@ class IgusLinearStageStepper:
         # 6081h Profile Velocity
         # Must be multiplied by 100 (_multi_factor)
         # This needs to be in mm/s
-        _motion_speed_rpm = round(
-            self.motion_speed * _multi_factor
-        )
+        _motion_speed_rpm = round(self.motion_speed * _multi_factor)
         if _motion_speed_rpm > 2 ** 16:
             # Catch this here because diagnosing the error is tough
             raise NotImplementedError(
@@ -532,9 +530,7 @@ class IgusLinearStageStepper:
         # 6083h Profile Acceleration
         # Needs to be in mm/s^2
         # Must be multiplied by 100 (_multi_factor)
-        _motion_accel_rpm = round(
-            self.motion_acceleration * _multi_factor
-        )
+        _motion_accel_rpm = round(self.motion_acceleration * _multi_factor)
 
         byte19 = _motion_accel_rpm & 0b11111111
         byte20 = (_motion_accel_rpm >> 8) & 0b11111111
@@ -903,7 +899,9 @@ class IgusLinearStageStepper:
         # start motion
         self.log.debug("Starting motion")
         await self.send_telegram(telegrams_write["start_motion"])
-        await self.poll_until_result([telegrams_read["target_reached"]], timeout=self.homing_timeout)
+        await self.poll_until_result(
+            [telegrams_read["target_reached"]], timeout=self.homing_timeout
+        )
         # set position profiling mode (1 on byte 19)
         await self.set_mode("position")
 
