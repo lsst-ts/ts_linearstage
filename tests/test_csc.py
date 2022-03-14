@@ -49,7 +49,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                             "moveRelative",
                             "stop",
                         ],
-                        settingsToApply=config,
+                        override=config,
                     )
 
     # This will work with salobj 6.1 when it's released
@@ -81,7 +81,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     simulation_mode=1,
                     config_dir=TEST_CONFIG_DIR,
                 ):
-                    await self.remote.cmd_start.set_start(settingsToApply=config)
+                    await self.remote.cmd_start.set_start(configurationOverride=config)
                     await self.remote.cmd_enable.start()
 
                     position_topic = await self.remote.tel_position.next(flush=True)
@@ -100,7 +100,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     config_dir=TEST_CONFIG_DIR,
                 ):
                     # Bring to enabled with correct config
-                    await self.remote.cmd_start.set_start(settingsToApply=config)
+                    await self.remote.cmd_start.set_start(configurationOverride=config)
                     await self.remote.cmd_enable.start()
                     await self.remote.cmd_getHome.set_start(timeout=10)
 
@@ -120,7 +120,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     config_dir=TEST_CONFIG_DIR,
                 ):
                     # Bring to enabled with correct config
-                    await self.remote.cmd_start.set_start(settingsToApply=config)
+                    await self.remote.cmd_start.set_start(configurationOverride=config)
                     await self.remote.cmd_enable.start()
 
                     _dist = 10  # [mm] - distance to travel
@@ -159,7 +159,10 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             with self.subTest(config=config):
                 logger.debug(f"Using config of {config}")
                 async with self.make_csc(
-                    index=1, initial_state=salobj.State.ENABLED, simulation_mode=1
+                    index=1,
+                    initial_state=salobj.State.ENABLED,
+                    simulation_mode=1,
+                    config_dir=TEST_CONFIG_DIR,
                 ):
                     await self.remote.cmd_moveRelative.set_start(
                         distance=10, timeout=15

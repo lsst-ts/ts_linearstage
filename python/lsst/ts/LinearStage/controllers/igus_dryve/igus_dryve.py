@@ -4,7 +4,7 @@ import asyncio
 import time
 import logging
 
-from lsst.ts import salobj
+from lsst.ts import salobj, utils
 from lsst.ts.LinearStage.mocks.mock_igusDryveController import MockIgusDryveController
 from lsst.ts.LinearStage.controllers.igus_dryve.igus_utils import (
     read_telegram,
@@ -74,7 +74,7 @@ class IgusLinearStageStepper:
         self.commander = None
         self.mock_ctrl = None  # mock controller, or None of not constructed
         # Task that waits while connecting to the TCP/IP controller.
-        self.connect_task = salobj.make_done_future()
+        self.connect_task = utils.make_done_future()
         self.reader = None
         self.writer = None
         self.cmd_lock = asyncio.Lock()
