@@ -87,7 +87,7 @@ def derive_handshake(telegram):
     return handshake
 
 
-async def interpret_read_telegram(self, telegram, mode):
+def interpret_read_telegram(telegram, mode):
     """Breaks down what a telegram means when received from the controller.
 
     The telegram is up to 24 bytes (but numbering is zero based, 0-23).
@@ -107,48 +107,109 @@ async def interpret_read_telegram(self, telegram, mode):
     # A Statusword 6041h telegram
     # means that byte 12 = 60h (hex) = 96 in decimal
     # and byte 13 = 41h (hex) = 65 in decimal
+    msg = ""
     if telegram[12] == 96 and telegram[13] == 65:
         if telegram[19] == 33:
-            # 33 is 10110, so switched on, operation enabled, voltage enable?
-            # What is voltage enable? FIXME - not in manual
-            # Appears to happen when a limit is hit while in homing mode.
-            logging.log(
-                "Interpreted as 6041h, byte 19 gives switched on, operation enabled, voltage enable."
-                "May occur when a limit is hit and has been cleared, but the state is in homing mode."
-                "Switch to position mode to clear the issue."
+            # 33 is 100001, so switched on, and quick stopped
+            # Appears to happen when a limit is hit (also while in homing mode?
+            msg_piece = (
+                f"Interpreted as 6041h, byte 19 [{telegram[19]}] gives "
+                "switched on, quick stop active. "
+                "\n May occur when a limit is "
+                "hit and has been cleared, but the state is in "
+                "homing mode. \n Switch to position mode to clear "
+                "the issue? The enable signal (DI7) may also "
+                "need a reset. Lastly a power cycle."
             )
-        if telegram[19] == 39:
+            logger.debug(msg_piece)
+            msg = msg + (msg_piece)
+
+        elif telegram[19] == 39:
             # 39 is 100111, so ready to switch on, switched on,
             # operation enabled, quick stop
             # this happens after homing is completed
             # if byte 20 == 22, then it's referenced
             # if byte 20 = 2, then homing being executed
-            logging.log(
-                "Interpreted as 6041h, byte 19 gives switch on, switched on, operation enabled, quick stop"
+            msg_piece = (
+                f"\n Interpreted as 6041h, byte 19 [{telegram[19]}] gives switch on, "
+                "switched on, operation enabled, quick stop"
             )
-        # Byte 20 is mode dependent, 6 is homing, 1 is position
+            logger.debug(msg_piece)
+            msg = msg + (msg_piece)
+        elif telegram[19] == 8:
+            # 8 is 1000, this is a fault
+            msg_piece = (
+                f"\n Interpreted as 6041h, byte 19 [{telegram[19]}] says fault, "
+                "reset the fault bit in the controller as the reset function"
+                "is not yet implemented in the CSC"
+            )
+            logger.debug(msg_piece)
+            msg = msg + (msg_piece)
+        elif telegram[19] == 64:
+            # 8 is 1000000
+            msg_piece = (
+                f"\n Interpreted as 6041h, byte 19 [{telegram[19]}] says switch on disabled, "
+                ""
+            )
+            logger.debug(msg_piece)
+            msg = msg + (msg_piece)
+
+        # Byte 20 is mode dependent, 6 is homing mode, 1 is position
         if mode == 6:
+            msg = msg + (f"\n Currently in homing mode [{mode}]")
             if telegram[20] == 2:  # 01
-                logging.log("Interpreted as 6041h, byte 20 gives: DI7 enabled")
-            if telegram[20] == 22:  # 10110 (bits 12, 11, 10, 9, 8 on the right)
-                # homing executed successfully sets bits 10 and 12 high
-                logging.log(
-                    "Interpreted as 6041h, byte 20 gives: DI7 enabled, homing executed successfully"
+                msg = msg + (
+                    f"\n Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled"
                 )
-            if telegram[20] == 34:  # 100010 (bits 13, 12, 11, 10, 9, 8 on the right)
+            elif telegram[20] == 22:  # 10110 (bits 12, 11, 10, 9, 8 on the right)
                 # homing executed successfully sets bits 10 and 12 high
-                logging.log(
-                    "Interpreted as 6041h, byte 20 gives: DI7 enabled, ... unsure"
+                msg = msg + (
+                    f"\n Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 "
+                    f"enabled, homing executed successfully"
+                )
+            elif telegram[20] == 34:  # 100010 (bits 13, 12, 11, 10, 9, 8 on the right)
+                # homing executed successfully sets bits 10 and 12 high
+                msg = msg + (
+                    f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled, "
+                    f"... unsure"
+                )
+            else:
+                msg = (
+                    msg
+                    + f"Could not interpret byte 20 [{telegram[20]}], for homing mode {mode}"
                 )
         if mode == 0 or mode == 1:
+            msg = msg + (
+                f"Currently in mode ({mode}). 1 = Profile Position Mode, 0 = no mode assigned"
+            )
             if telegram[20] == 2:  # 01
-                logging.log("Interpreted as 6041h, byte 20 gives: DI7 enabled")
-            if telegram[20] == 4:  # 100
-                logging.log(
-                    "Interpreted as 6041h, byte 20 gives: Target Reached - but this doesn't make sense. "
-                    "This happens when DI7 is not enabled or the drive profile in the controller is not set"
+                msg = msg + (
+                    f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled"
                 )
-            if telegram[20] == 6:  # 110
-                logging.log(
-                    "Interpreted as 6041h, byte 20 gives: DI7 enabled, Target Reached"
+            elif telegram[20] == 4:  # 100
+                msg = msg + (
+                    f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: Target Reached"
+                    f" - but this doesn't make sense. "
+                    "This happens when DI7 is not enabled or the drive profile in the "
+                    "controller is not set"
                 )
+            elif telegram[20] == 6:  # 110
+                msg = msg + (
+                    f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled, "
+                    f"Target Reached"
+                )
+            elif telegram[20] == 18:  # 10010
+                msg = msg + (
+                    f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled, "
+                    f"Target NOT Reached, setpoint applied."
+                )
+            else:
+                msg = (
+                    msg
+                    + f"Could not interpret byte 20 [{telegram[20]}] in mode {mode}."
+                )
+    # Check to make sure that there is something new to add
+    if "Interpreted" not in msg:
+        msg = f"\n The following telegram could not be interpreted: \n {telegram}"
+
+    return msg

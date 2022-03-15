@@ -5,3 +5,12 @@
 stage_type: "Igus"
 socket_port: 502
 socket_address: "192.168.0.148"
+feed_rate: 150
+maximum_stroke: 1000
+homing_speed: 30
+homing_acceleration: 20
+homing_timeout: 60
+motion_speed: 50
+motion_acceleration: 20
+target_position_minimum: 5
+target_position_maximum: 70

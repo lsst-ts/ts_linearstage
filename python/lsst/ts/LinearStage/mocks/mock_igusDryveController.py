@@ -30,10 +30,6 @@ from lsst.ts.LinearStage.controllers.igus_dryve.igus_utils import (
     read_telegram,
     derive_handshake,
 )
-import logging
-
-logging.basicConfig()
-logger = logging.getLogger(__name__)
 
 _STD_TIMEOUT = 5  # seconds
 
@@ -62,13 +58,13 @@ class MockIgusDryveController:
     * Nothing works yet
     """
 
-    def __init__(self, port, host):
+    def __init__(self, port, host, log):
         # If port == 0 then this will be updated to the actual port
         # in `start`, right after the TCP/IP server is created.
         self.port = port
         self.host = host
 
-        self.log = logging.getLogger("MockIgusDryveController")
+        self.log = log.getChild("MockIgusDryveController")
         self.server = None
 
         # Possible incoming/outgoing telegrams
@@ -115,7 +111,11 @@ class MockIgusDryveController:
         self.dispatch_dict = {
             self.telegram_incoming["status_request"]: (False, self.do_status_request),
             self.telegram_incoming["switch_on"]: (False, self.do_switch_on),
-            self.telegram_incoming["enable_operation"]: (False, self.enable_operation)
+            self.telegram_incoming["enable_operation"]: (False, self.enable_operation),
+            self.telegram_incoming["unexpected_response_check"]: (
+                False,
+                self.do_set_weird_state1,
+            )
             # "MV": (True, self.do_set_cmd_az),
         }
 
@@ -261,6 +261,22 @@ class MockIgusDryveController:
                 f"Current state of {self.state} does not have a keyword pair with appropriate response"
             )
 
+    def do_set_weird_state1(self):
+        """Transitions state to something the program isn't expecting just
+        to test error handling
+
+        Returns
+        -------
+        response_telegrams : `list`
+            List of telegrams to send in response
+
+        """
+
+        # can now return a handshake and set the new state
+        _response_telegrams = [derive_handshake(self.cmd)]
+        self.state = "weird_state1"
+        return _response_telegrams
+
     def enable_operation(self):
         """Transitions state from switched_on to operation_enabled and
         publishes handshake
@@ -336,7 +352,17 @@ class MockIgusDryveController:
             time_to_target = (
                 self.target_pos - self.current_pos
             ) / self.motion_speed_mm_per_s
-            await asyncio.sleep(time_to_target)
+            self.log.debug(f"Estimated time to target is {time_to_target} seconds")
+            _time = 0
+            if interval is None:
+                while _time < time_to_target:
+                    self.current_pos = (
+                        self.current_pos
+                        + _time / time_to_target * self.motion_speed_mm_per_s
+                    )
+                    await asyncio.sleep(1)
+                    _time += 1
+                await asyncio.sleep(time_to_target)
             self.current_pos = self.target_pos
 
         elif self.mode == 6:  # homing
@@ -500,7 +526,7 @@ class MockIgusDryveController:
 
         # 6083h Profile Acceleration
         # Needs to be in rpm/min^2
-        if telegram[12] == 96 and telegram[13] == 154:
+        if telegram[12] == 96 and telegram[13] == 131:
             self.log.debug("Interpreted 6083h (Profile Acceleration) telegram")
             # acceleration used when searching
             self.motion_accel_rpm_per_min2 = (

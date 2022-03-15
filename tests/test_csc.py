@@ -1,6 +1,7 @@
 import unittest
 import pathlib
 import logging
+import asyncio
 
 from lsst.ts import salobj
 from lsst.ts import LinearStage
@@ -8,6 +9,7 @@ from lsst.ts.idl.enums.LinearStage import DetailedState
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
+logger.propagate = True
 
 TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
 
@@ -47,7 +49,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                             "moveRelative",
                             "stop",
                         ],
-                        settingsToApply=config,
+                        override=config,
                     )
 
     # This will work with salobj 6.1 when it's released
@@ -79,7 +81,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     simulation_mode=1,
                     config_dir=TEST_CONFIG_DIR,
                 ):
-                    await self.remote.cmd_start.set_start(settingsToApply=config)
+                    await self.remote.cmd_start.set_start(configurationOverride=config)
                     await self.remote.cmd_enable.start()
 
                     position_topic = await self.remote.tel_position.next(flush=True)
@@ -98,12 +100,12 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     config_dir=TEST_CONFIG_DIR,
                 ):
                     # Bring to enabled with correct config
-                    await self.remote.cmd_start.set_start(settingsToApply=config)
+                    await self.remote.cmd_start.set_start(configurationOverride=config)
                     await self.remote.cmd_enable.start()
                     await self.remote.cmd_getHome.set_start(timeout=10)
 
                     # At this point, with the igus stage, when you go back to
-                    # stanbdy it disables the motor (applies the brake),
+                    # standby it disables the motor (applies the brake),
                     # however, internal status can be held. Check that it
                     # can come back to enabled and move.
 
@@ -118,7 +120,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     config_dir=TEST_CONFIG_DIR,
                 ):
                     # Bring to enabled with correct config
-                    await self.remote.cmd_start.set_start(settingsToApply=config)
+                    await self.remote.cmd_start.set_start(configurationOverride=config)
                     await self.remote.cmd_enable.start()
 
                     _dist = 10  # [mm] - distance to travel
@@ -143,7 +145,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     await self.remote.cmd_moveAbsolute.set_start(
                         distance=_dist, timeout=15
                     )
-
+                    await asyncio.sleep(1.5)
                     await self.assert_next_sample(
                         topic=self.remote.evt_detailedState,
                         detailedState=DetailedState.NOTMOVINGSTATE,
@@ -153,17 +155,27 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     )
 
     async def test_moveRelative(self):
-        async with self.make_csc(
-            index=1, initial_state=salobj.State.ENABLED, simulation_mode=1
-        ):
-            await self.remote.cmd_moveRelative.set_start(distance=10, timeout=15)
-            await self.assert_next_sample(
-                topic=self.remote.tel_position, flush=True, position=10
-            )
-            await self.remote.cmd_moveRelative.set_start(distance=10, timeout=15)
-            await self.assert_next_sample(
-                topic=self.remote.tel_position, flush=True, position=20
-            )
+        for config in CONFIGS:
+            with self.subTest(config=config):
+                logger.debug(f"Using config of {config}")
+                async with self.make_csc(
+                    index=1,
+                    initial_state=salobj.State.ENABLED,
+                    simulation_mode=1,
+                    config_dir=TEST_CONFIG_DIR,
+                ):
+                    await self.remote.cmd_moveRelative.set_start(
+                        distance=10, timeout=15
+                    )
+                    await self.assert_next_sample(
+                        topic=self.remote.tel_position, flush=True, position=10
+                    )
+                    await self.remote.cmd_moveRelative.set_start(
+                        distance=10, timeout=15
+                    )
+                    await self.assert_next_sample(
+                        topic=self.remote.tel_position, flush=True, position=20
+                    )
 
     # async def test_checkMotorInternalStatusPreservation(self):
     #     with self.subTest(config="igus"):

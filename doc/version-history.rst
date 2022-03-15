@@ -8,8 +8,8 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
-v1.1.0 <Unreleased>
-===================
+v1.1.0
+======
 * Added documentation
 * Standardized repo layout
 * Prepared CSC for salobj 6
@@ -17,11 +17,12 @@ v1.1.0 <Unreleased>
 * Added black linter
 * Upgrade to black 20.8
 * Added igus drive support
+* Update CSC to use salobj 7
 
 Requirements
 ------------
 * ts_xml - v6.2.0
-* ts_salobj - v6.x
+* ts_salobj - v7.x
 
 v1.0.1
 ------
