@@ -203,7 +203,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                     )
                 except RuntimeError as e:
                     err_msg = "Failed to establish connection to component"
-                    self.fault(code=2, report=f"{err_msg}: {e}")
+                    await self.fault(code=2, report=f"{err_msg}: {e}")
                     raise e
 
             if self.telemetry_task.done():
@@ -219,7 +219,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                     await self.component.enable_motor(False)
             except Exception as e:
                 err_msg = "Failed to enable or disable motor"
-                self.fault(code=2, report=f"{err_msg}: {e}")
+                await self.fault(code=2, report=f"{err_msg}: {e}")
                 raise e
 
         elif self.component is not None:
@@ -254,7 +254,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             # reset the detailed state
             await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
             err_msg = "Failed to home motor"
-            self.fault(code=2, report=f"{err_msg}: {e}")
+            await self.fault(code=2, report=f"{err_msg}: {e}")
             raise e
         self.referenced = True
         await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
@@ -279,7 +279,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         except Exception as e:
             err_msg = "Failed to perform absolute position movement"
             await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
-            self.fault(code=2, report=f"{err_msg}: {e}")
+            await self.fault(code=2, report=f"{err_msg}: {e}")
             raise e
 
         await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)

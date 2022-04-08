@@ -3,6 +3,7 @@ __all__ = ["IgusLinearStageStepper"]
 import asyncio
 import time
 import logging
+import numpy as np
 
 from lsst.ts import salobj, utils
 from lsst.ts.LinearStage.mocks.mock_igusDryveController import MockIgusDryveController
@@ -679,21 +680,55 @@ class IgusLinearStageStepper:
 
         self.log.debug("Received desired response!")
 
-    async def move_absolute(self, value, timeout=20):
+    def time_to_target(self, target):
+        """Estimate the time to reach a target based on distance, speed
+        and acceleration parameters.
+
+        Parameters
+        ----------
+        target : `float`
+            The number of millimeters of movement.
+
+        Returns
+        -------
+
+        time_to_target : `float`
+            The estimated number of seconds to reach the target.
+
+        """
+        dist_to_target = np.abs(target - self.position)
+
+        # Calculate Distance to get to maximum speed
+        dist_to_max_v = self.motion_speed**2 / (2 * self.motion_acceleration)
+
+        # Consider case where maximum velocity is never reached
+        # So will be accelerating and decelerating only
+        if dist_to_target < 2 * dist_to_max_v:
+            # Time accelerating for half the distance to the target would be
+            # sqrt(2*(dist_to_target/2)/self.motion_acceleration)
+            # but we simplify this and account for both accel and decel
+            estimated_time = 2 * np.sqrt(dist_to_target / self.motion_acceleration)
+        else:
+            # Max velocity will be reached
+            time_to_accelerate = np.sqrt(2 * dist_to_max_v / self.motion_acceleration)
+            estimated_time = (
+                2 * time_to_accelerate
+                + (dist_to_target - 2 * dist_to_max_v) / self.motion_speed
+            )
+
+        self.log.info(f"Estimated time to target is {estimated_time:0.3f} seconds.")
+        return estimated_time
+
+    async def move_absolute(self, value):
         """This method moves the linear stage absolutely by the number of
         steps away from the zero (homed) position.
         i.e. value=10 would mean the stage would move 10 millimeters away from
-        the start.
+        the home position.
 
         Parameters
         ----------
         value : `float`
             The number of millimeters to move the stage.
-
-        timeout : `float`
-            Time to wait for stage to be in position before raising an
-            exception.
-            Default is 20s
 
         Returns
         -------
@@ -758,14 +793,15 @@ class IgusLinearStageStepper:
         # reset the start bit
         await self.send_telegram(telegrams_write["enable_operation"])
         # start motion
-        self.log.debug(f"Starting to move to position {value} mm")
+        self.log.info(f"Starting to move to position {value} mm")
+        movement_time = self.time_to_target(value)
         await self.send_telegram(telegrams_write["start_motion"])
         # Now poll until target is reached
         await self.poll_until_result(
-            [telegrams_read["target_reached"]], timeout=timeout
+            [telegrams_read["target_reached"]], timeout=movement_time + 5
         )
 
-    async def move_relative(self, value, timeout=20):
+    async def move_relative(self, value):
         """This method moves the linear stage relative to the current position.
         The method basically wraps the absolute positioning code.
 
@@ -780,7 +816,7 @@ class IgusLinearStageStepper:
         """
 
         target_position = self.position + value
-        await self.move_absolute(target_position, timeout=20)
+        await self.move_absolute(target_position)
 
     async def set_mode(self, mode):
         """Sets the mode for the igus controller.
