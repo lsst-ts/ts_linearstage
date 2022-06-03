@@ -29,7 +29,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
 
     async def test_bin_script(self):
         await self.check_bin_script(
-            name="LinearStage", exe_name="run_linearstage_csc.py", index=1
+            name="LinearStage", exe_name="run_linearstage", index=1
         )
 
     async def test_standard_state_transitions(self):

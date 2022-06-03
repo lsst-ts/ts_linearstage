@@ -310,7 +310,7 @@ class IgusLinearStageStepper:
         #                        146, 1, 0, 0, 0, 2, 112, 23]))
 
         _feed_constant = round(self.feed_constant * _multi_factor)
-        if _feed_constant > 2 ** 16:
+        if _feed_constant > 2**16:
             # Catch this here because diagnosing the error is tough
             raise NotImplementedError(
                 f"Value for given for feed constant of {self.feed_constant}"
@@ -367,7 +367,7 @@ class IgusLinearStageStepper:
         _homing_speed_rpm = round(
             self.homing_speed / self.feed_constant * 60 * _multi_factor
         )
-        if _homing_speed_rpm > 2 ** 16:
+        if _homing_speed_rpm > 2**16:
             # Catch this here because diagnosing the error is tough
             raise NotImplementedError(
                 f"Value for given for feed constant of {self.homing_speed}"
@@ -488,7 +488,7 @@ class IgusLinearStageStepper:
         # Must be multiplied by 100 (_multi_factor)
         # This needs to be in mm/s
         _motion_speed_rpm = round(self.motion_speed * _multi_factor)
-        if _motion_speed_rpm > 2 ** 16:
+        if _motion_speed_rpm > 2**16:
             # Catch this here because diagnosing the error is tough
             raise NotImplementedError(
                 f"Value for given for feed constant of {self.motion_speed}"
