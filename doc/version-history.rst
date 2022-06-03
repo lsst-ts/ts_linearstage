@@ -18,6 +18,7 @@ v1.1.0
 * Upgrade to black 20.8
 * Added igus drive support
 * Update CSC to use salobj 7
+* Use pyproject.toml
 
 Requirements
 ------------
