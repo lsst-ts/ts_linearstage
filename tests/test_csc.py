@@ -127,9 +127,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
 
                     logger.debug("Try to move without being homed, this should fail")
                     with self.assertRaises(salobj.AckError):
-                        await self.remote.cmd_moveAbsolute.set_start(
-                            distance=_dist, timeout=10
-                        )
+                        await self.remote.cmd_moveAbsolute.set_start(distance=_dist)
 
                     # shortcut homing
                     # Now set the referencing to True
@@ -142,9 +140,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                         # get set when homing
                         await self.csc.component.set_mode("position")
 
-                    await self.remote.cmd_moveAbsolute.set_start(
-                        distance=_dist, timeout=15
-                    )
+                    await self.remote.cmd_moveAbsolute.set_start(distance=_dist)
                     await asyncio.sleep(1.5)
                     await self.assert_next_sample(
                         topic=self.remote.evt_detailedState,
