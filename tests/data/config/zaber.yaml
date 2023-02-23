@@ -2,8 +2,8 @@
 # Date created: 2020-11-13
 # Description: Updated v1 version to v2 format. This is a serial port (USB) connection.
 
-stage_type: "Zaber"
-serial_port: "/dev/ttyLinearStage1"
+stage_type: Zaber
+serial_port: /dev/ttyLinearStage1
 daisy_chain_address: 1
 steps_per_mm: 8000
 target_position_minimum: 5

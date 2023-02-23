@@ -1,4 +1,4 @@
-from lsst.ts.LinearStage.controllers.zaber_LST import ZaberLSTStage
+from lsst.ts.linearstage.controllers.zaber_lst import ZaberLSTStage
 from zaber.serial import AsciiReply
 import pytest
 import logging

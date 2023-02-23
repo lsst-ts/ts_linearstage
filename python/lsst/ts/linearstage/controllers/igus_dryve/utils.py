@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from lsst.ts.LinearStage.controllers.igus_dryve.igusDryveTelegrams import (
+
+from ...controllers.igus_dryve.telegrams import (  # telegrams_read,; telegrams_read_errs,
     telegrams_write,
     #    telegrams_read,
     #    telegrams_read_errs,

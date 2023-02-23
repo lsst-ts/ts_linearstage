@@ -4,7 +4,7 @@ import logging
 import asyncio
 
 from lsst.ts import salobj
-from lsst.ts import LinearStage
+from lsst.ts import linearstage
 from lsst.ts.idl.enums.LinearStage import DetailedState
 
 logging.basicConfig()
@@ -20,7 +20,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
     def basic_make_csc(
         self, index, initial_state, config_dir, simulation_mode, **kwargs
     ):
-        return LinearStage.LinearStageCSC(
+        return linearstage.LinearStageCSC(
             index=index,
             initial_state=initial_state,
             config_dir=TEST_CONFIG_DIR,

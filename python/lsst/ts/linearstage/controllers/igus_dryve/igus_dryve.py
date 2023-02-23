@@ -6,14 +6,9 @@ import logging
 import numpy as np
 
 from lsst.ts import salobj, utils
-from lsst.ts.LinearStage.mocks.mock_igusDryveController import MockIgusDryveController
-from lsst.ts.LinearStage.controllers.igus_dryve.igus_utils import (
-    read_telegram,
-    derive_handshake,
-    interpret_read_telegram,
-)
+from ...mocks.mock_igus_dryve_controller import MockIgusDryveController
 
-from lsst.ts.LinearStage.controllers.igus_dryve.igusDryveTelegrams import (
+from .telegrams import (
     telegrams_write,
     telegrams_read,
     # telegrams_read_errs,

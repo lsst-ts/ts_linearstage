@@ -6,7 +6,7 @@ import pty
 import os
 import asyncio
 
-from lsst.ts.LinearStage.mocks.mock_zaberLST import MockSerial
+from lsst.ts.linearstage.mocks.mock_zaber_lst import MockSerial
 from zaber import serial as zaber
 
 

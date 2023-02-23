@@ -21,12 +21,13 @@
 __all__ = ["MockIgusDryveController"]
 
 import asyncio
-from lsst.ts.LinearStage.controllers.igus_dryve.igusDryveTelegrams import (
-    telegrams_write,
+
+from ..controllers.igus_dryve.telegrams import (
     telegrams_read,
     telegrams_read_errs,
 )
-from lsst.ts.LinearStage.controllers.igus_dryve.igus_utils import (
+from ..controllers.igus_dryve.utils import (
+    derive_handshake,
     read_telegram,
     derive_handshake,
 )

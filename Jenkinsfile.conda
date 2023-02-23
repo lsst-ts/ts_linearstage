@@ -1,2 +1,2 @@
 @Library('JenkinsShared')_
-CondaPipeline(["ts_config_mtcalsys"], "ts-linearstage", "lsst.ts.LinearStage", "noarch")
+CondaPipeline(["ts_config_mtcalsys"], "ts-linearstage", "lsst.ts.linearstage", "noarch")

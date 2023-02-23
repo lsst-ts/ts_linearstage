@@ -7,3 +7,4 @@ except ImportError:
 from .csc import *
 from .controllers import *
 from .mocks import *
+from .config_schema import *

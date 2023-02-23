@@ -1,8 +1,8 @@
 __all__ = ["LinearStageCSC"]
 
 from . import __version__
-from lsst.ts.LinearStage.controllers.igus_dryve import IgusLinearStageStepper
-from lsst.ts.LinearStage.controllers.zaber_LST import ZaberLSTStage
+from lsst.ts.linearstage.controllers.igus_dryve import IgusLinearStageStepper
+from lsst.ts.linearstage.controllers.zaber_lst import ZaberLSTStage
 from .config_schema import CONFIG_SCHEMA
 
 from lsst.ts.idl.enums import LinearStage

@@ -8,6 +8,13 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
+v1.2.0
+======
+* Update precommit to black v23, isort 5.12 & check-yaml 4.4.
+* Renamed to lowercase linearstage namespace.
+* Make everything relative imports.
+* Update config_schema to use enums to divide configurations.
+
 v1.1.0
 ======
 * Added documentation
