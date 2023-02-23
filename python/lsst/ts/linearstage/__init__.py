@@ -4,7 +4,7 @@ except ImportError:
     __version__ = "?"
 
 
-from .csc import *
-from .controllers import *
-from .mocks import *
 from .config_schema import *
+from .controllers import *
+from .csc import *
+from .mocks import *

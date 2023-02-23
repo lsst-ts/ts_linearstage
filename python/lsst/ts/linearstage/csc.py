@@ -1,13 +1,14 @@
 __all__ = ["LinearStageCSC"]
 
-from . import __version__
+import asyncio
+
+from lsst.ts import salobj, utils
+from lsst.ts.idl.enums import LinearStage
 from lsst.ts.linearstage.controllers.igus_dryve import IgusLinearStageStepper
 from lsst.ts.linearstage.controllers.zaber_lst import ZaberLSTStage
-from .config_schema import CONFIG_SCHEMA
 
-from lsst.ts.idl.enums import LinearStage
-from lsst.ts import salobj, utils
-import asyncio
+from . import __version__
+from .config_schema import CONFIG_SCHEMA
 
 
 class LinearStageCSC(salobj.ConfigurableCsc):

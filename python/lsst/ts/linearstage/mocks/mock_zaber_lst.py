@@ -1,12 +1,11 @@
 __all__ = ["MockSerial", "MockLST"]
 
+import inspect
 import logging
 import queue
-import inspect
-
-from zaber.serial import AsciiCommand
 
 import serial
+from zaber.serial import AsciiCommand
 
 
 class MockSerial:

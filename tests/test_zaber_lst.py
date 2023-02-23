@@ -1,7 +1,8 @@
+import logging
+
+import pytest
 from lsst.ts.linearstage.controllers.zaber_lst import ZaberLSTStage
 from zaber.serial import AsciiReply
-import pytest
-import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)

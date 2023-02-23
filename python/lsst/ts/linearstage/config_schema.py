@@ -1,6 +1,5 @@
 import yaml
 
-
 CONFIG_SCHEMA = yaml.safe_load(
     """
 $schema: http://json-schema.org/draft-07/schema#
@@ -14,7 +13,7 @@ properties:
     stage_type:
         description: Type of stage being controlled.
         type: string
-        enum: ["Zaber", "Igus"]
+        enum: [Zaber, Igus]
     target_position_minimum:
         description: >
           Minimum target position in mm
@@ -98,6 +97,7 @@ allOf:
         - target_position_maximum
         - serial_port
         - daisy_chain_address
+        # DM-38124
         - steps_per_mm
 
 """

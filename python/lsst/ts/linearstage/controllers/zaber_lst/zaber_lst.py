@@ -1,14 +1,13 @@
 __all__ = ["ZaberLSTStage"]
 
-import logging
-from serial import SerialException
-import pty
-import os
 import asyncio
+import logging
+import os
+import pty
 
 from lsst.ts.linearstage.mocks.mock_zaber_lst import MockSerial
+from serial import SerialException
 from zaber import serial as zaber
-
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)

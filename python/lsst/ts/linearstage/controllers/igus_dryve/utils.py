@@ -3,8 +3,6 @@ import logging
 
 from ...controllers.igus_dryve.telegrams import (  # telegrams_read,; telegrams_read_errs,
     telegrams_write,
-    #    telegrams_read,
-    #    telegrams_read_errs,
 )
 
 logging.basicConfig()

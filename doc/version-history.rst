@@ -13,7 +13,7 @@ v1.2.0
 * Update precommit to black v23, isort 5.12 & check-yaml 4.4.
 * Renamed to lowercase linearstage namespace.
 * Make everything relative imports.
-* Update config_schema to use enums to divide configurations.
+* Update config_schema to use enums to divide device configurations.
 
 v1.1.0
 ======

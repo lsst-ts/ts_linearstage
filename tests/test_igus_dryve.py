@@ -1,14 +1,12 @@
-from lsst.ts.linearstage.controllers.igus_dryve import IgusLinearStageStepper
-from lsst.ts.linearstage.controllers.igus_dryve.telegrams import (
-    telegrams_write,
-    telegrams_read,
-    #    telegrams_read_errs,
-)
-from lsst.ts.linearstage.controllers.igus_dryve.utils import (
-    interpret_read_telegram,
-)
-import unittest
 import logging
+import unittest
+
+from lsst.ts.linearstage.controllers.igus_dryve import IgusLinearStageStepper
+from lsst.ts.linearstage.controllers.igus_dryve.telegrams import (  # telegrams_read_errs,
+    telegrams_read,
+    telegrams_write,
+)
+from lsst.ts.linearstage.controllers.igus_dryve.utils import interpret_read_telegram
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)

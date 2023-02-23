@@ -1,18 +1,15 @@
 __all__ = ["IgusLinearStageStepper"]
 
 import asyncio
-import time
 import logging
+import time
+
 import numpy as np
-
 from lsst.ts import salobj, utils
-from ...mocks.mock_igus_dryve_controller import MockIgusDryveController
 
-from .telegrams import (
-    telegrams_write,
-    telegrams_read,
-    # telegrams_read_errs,
-)
+from ...mocks import MockIgusDryveController
+from .telegrams import telegrams_read, telegrams_write  # telegrams_read_errs,
+from .utils import derive_handshake, interpret_read_telegram, read_telegram
 
 _LOCAL_HOST = "127.0.0.1"
 _STD_TIMEOUT = 20  # standard timeout
@@ -1055,7 +1052,6 @@ class IgusLinearStageStepper:
                 raise RuntimeError("Not connected and not trying to connect")
 
         async with self.cmd_lock:
-
             self.writer.write(bytearray(cmd))
             await self.writer.drain()
             self.log.debug(f"Sent telegram {cmd}")

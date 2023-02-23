@@ -1,10 +1,9 @@
-import unittest
-import pathlib
-import logging
 import asyncio
+import logging
+import pathlib
+import unittest
 
-from lsst.ts import salobj
-from lsst.ts import linearstage
+from lsst.ts import linearstage, salobj
 from lsst.ts.idl.enums.LinearStage import DetailedState
 
 logging.basicConfig()
@@ -33,7 +32,6 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
         )
 
     async def test_standard_state_transitions(self):
-
         for config in CONFIGS:
             with self.subTest(config=config):
                 async with self.make_csc(
