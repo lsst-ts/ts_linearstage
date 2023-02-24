@@ -2,9 +2,9 @@
 # Date created: 2020-11-13
 # Description: Configures socket connection to Igus Dryve v1 controller. Being tested on local network for the moment.
 
-stage_type: "Igus"
+stage_type: Igus
 socket_port: 502
-socket_address: "192.168.0.148"
+socket_address: 192.168.0.148
 feed_rate: 150
 maximum_stroke: 1000
 homing_speed: 30

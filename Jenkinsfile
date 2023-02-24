@@ -5,7 +5,7 @@ pipeline {
         docker {
             alwaysPull true
             image 'lsstts/develop-env:develop'
-            args "-u root --entrypoint=''"
+            args "--entrypoint=''"
         }
     }
     environment {
@@ -16,7 +16,7 @@ pipeline {
         // XML report path
         XML_REPORT="jenkinsReport/report.xml"
         // Module name used in the pytest coverage analysis
-        MODULE_NAME="lsst.ts.LinearStage"
+        MODULE_NAME="lsst.ts.linearstage"
         user_ci = credentials('lsst-io')
         LTD_USERNAME="${user_ci_USR}"
         LTD_PASSWORD="${user_ci_PSW}"
@@ -86,12 +86,6 @@ pipeline {
 
     post {
         always {
-            // Change the ownership of workspace to Jenkins for the clean up
-            // This is a "work around" method
-            withEnv(["HOME=${env.WORKSPACE}"]) {
-                sh 'chown -R 1003:1003 ${HOME}/'
-            }
-
             // The path of xml needed by JUnit is relative to
             // the workspace.
             junit 'jenkinsReport/*.xml'
