@@ -7,10 +7,10 @@ source:
     path: ../
 
 build:
-    noarch: generic
-    script: python -m pip install --no-deps --ignore-installed .
+    noarch: python
+    script: {{ PYTHON }} -m pip install --no-deps --ignore-installed .
     entry_points:
-        - run_linearstage = lsst.ts.LinearStage.cli:execute_csc
+        - run_linearstage = lsst.ts.linearstage.cli:execute_csc
     script_env:
         - PATH
         - PYTHONPATH
@@ -43,7 +43,11 @@ requirements:
         - pip
         - setuptools_scm
         - setuptools
-        - pytest-runner
+    build:
+        - python {{ python }}
+        - setuptools_scm
+        - setuptools
+        - ts-conda-build =0.3
     run:
         - python
         - setuptools
