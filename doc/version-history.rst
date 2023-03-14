@@ -14,6 +14,7 @@ v1.2.0
 * Renamed to lowercase linearstage namespace.
 * Make everything relative imports.
 * Update config_schema to use enums to divide device configurations.
+* Use generate_pre_commit_conf and DevelopPipeline.
 
 v1.1.0
 ======
