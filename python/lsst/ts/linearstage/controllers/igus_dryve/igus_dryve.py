@@ -3,6 +3,7 @@ __all__ = ["IgusLinearStageStepper"]
 import asyncio
 import logging
 import time
+import types
 
 import numpy as np
 from lsst.ts import salobj, utils
@@ -83,17 +84,18 @@ class IgusLinearStageStepper:
         )
 
     def configure(self, config):
-        self.port = config.socket_port
-        self.address = config.socket_address
+        config.igus = types.SimpleNamespace(**config.igus)
+        self.port = config.igus.socket_port
+        self.address = config.igus.socket_address
 
         # feed rate *must* be in mm per rotation
-        self.feed_constant = config.feed_rate
-        self.homing_speed = config.homing_speed
-        self.homing_acceleration = config.homing_acceleration
-        self.homing_timeout = config.homing_timeout
-        self.motion_speed = config.motion_speed
-        self.motion_acceleration = config.motion_acceleration
-        self.maximum_stroke = config.maximum_stroke
+        self.feed_constant = config.igus.feed_rate
+        self.homing_speed = config.igus.homing_speed
+        self.homing_acceleration = config.igus.homing_acceleration
+        self.homing_timeout = config.igus.homing_timeout
+        self.motion_speed = config.igus.motion_speed
+        self.motion_acceleration = config.igus.motion_acceleration
+        self.maximum_stroke = config.igus.maximum_stroke
 
     async def connect(self):
         """Connect to the Igus Dryve controller's TCP/IP port.

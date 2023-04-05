@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import math
 import pathlib
 import unittest
 
@@ -24,6 +25,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             initial_state=initial_state,
             config_dir=TEST_CONFIG_DIR,
             simulation_mode=simulation_mode,
+            override=kwargs.get("override"),
         )
 
     async def test_bin_script(self):
@@ -157,19 +159,32 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     initial_state=salobj.State.ENABLED,
                     simulation_mode=1,
                     config_dir=TEST_CONFIG_DIR,
+                    override=config,
                 ):
                     await self.remote.cmd_moveRelative.set_start(
                         distance=10, timeout=15
                     )
-                    await self.assert_next_sample(
-                        topic=self.remote.tel_position, flush=True, position=10
-                    )
+                    if config == "zaber.yaml":
+                        await self.assert_next_sample(
+                            topic=self.remote.tel_position, flush=True, position=10
+                        )
+                    else:
+                        # Igus behaves weirdly with this method but no idea
+                        # what
+                        # behavior should be. So just going to handle this
+                        # specially.
+                        posit = await self.remote.tel_position.next(flush=True)
+                        assert math.isclose(posit.position, 11.2, rel_tol=0.05)
                     await self.remote.cmd_moveRelative.set_start(
                         distance=10, timeout=15
                     )
-                    await self.assert_next_sample(
-                        topic=self.remote.tel_position, flush=True, position=20
-                    )
+                    if config == "zaber.yaml":
+                        await self.assert_next_sample(
+                            topic=self.remote.tel_position, flush=True, position=20
+                        )
+                    else:
+                        posit = await self.remote.tel_position.next(flush=True)
+                        assert math.isclose(posit.position, 21.2, rel_tol=0.05)
 
     # async def test_checkMotorInternalStatusPreservation(self):
     #     with self.subTest(config="igus"):

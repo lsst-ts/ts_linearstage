@@ -1,3 +1,3 @@
 #!/usr/bin/env groovy
 @Library('JenkinsShared')_
-DevelopPipeline("ts-linearstage", "LinearStage", "lsst.ts.linearstage", "--no-mypy")
+DevelopPipeline(name: "ts-linearstage", idl_names: ["LinearStage"], module_name: "lsst.ts.linearstage")

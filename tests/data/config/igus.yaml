@@ -2,15 +2,21 @@
 # Date created: 2020-11-13
 # Description: Configures socket connection to Igus Dryve v1 controller. Being tested on local network for the moment.
 
-stage_type: Igus
-socket_port: 502
-socket_address: 192.168.0.148
-feed_rate: 150
-maximum_stroke: 1000
-homing_speed: 30
-homing_acceleration: 20
-homing_timeout: 60
-motion_speed: 50
-motion_acceleration: 20
-target_position_minimum: 5
-target_position_maximum: 70
+linear_stage_config:
+  -
+    sal_index: 1
+    stage_type: Igus
+    target_position_maximum: 70
+    target_position_minimum: 5
+    igus:
+      socket_port: 502
+      socket_address: 192.168.0.148
+      feed_rate: 150
+      maximum_stroke: 1000
+      homing_speed: 30
+      homing_acceleration: 20
+      homing_timeout: 60
+      motion_speed: 50
+      motion_acceleration: 20
+      
+      

@@ -1,6 +1,7 @@
 __all__ = ["LinearStageCSC"]
 
 import asyncio
+import types
 
 from lsst.ts import salobj, utils
 from lsst.ts.idl.enums import LinearStage
@@ -39,6 +40,8 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         initial_state=salobj.State.STANDBY,
         config_dir=None,
         simulation_mode=0,
+        override=None,
+        **kwargs,
     ):
         super().__init__(
             name="LinearStage",
@@ -47,6 +50,8 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             config_dir=config_dir,
             initial_state=initial_state,
             simulation_mode=simulation_mode,
+            override=override,
+            **kwargs,
         )
 
         self.component = None
@@ -69,24 +74,32 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         ----------
         config : `types.SimpleNamespace`
         """
-        self.stage_type = config.stage_type
-        self.target_position_minimum = config.target_position_minimum
-        self.target_position_maximum = config.target_position_maximum
+        for index in range(self.salinfo.index):
+            if self.salinfo.index == config.linear_stage_config[index]["sal_index"]:
+                config = types.SimpleNamespace(**config.linear_stage_config[index])
+                self.log.info(f"{config=}")
+                self.stage_type = config.stage_type
+                self.target_position_minimum = config.target_position_minimum
+                self.target_position_maximum = config.target_position_maximum
 
-        self.log.debug(f"Stage type is {self.stage_type}")
-        self.log.debug(f"Simulation mode number is {self.simulation_mode_number}")
-        # Instantiate the class specific to the hardware component
-        if self.stage_type == "Igus":
-            self.component = IgusLinearStageStepper(
-                simulation_mode=bool(self.simulation_mode_number), log=self.log
-            )
-        elif self.stage_type == "Zaber":
-            self.component = ZaberLSTStage(
-                simulation_mode=bool(self.simulation_mode_number), log=self.log
-            )
+                self.log.debug(f"Stage type is {self.stage_type}")
+                self.log.debug(
+                    f"Simulation mode number is {self.simulation_mode_number}"
+                )
+                # Instantiate the class specific to the hardware component
+                if self.stage_type == "Igus":
+                    self.component = IgusLinearStageStepper(
+                        simulation_mode=bool(self.simulation_mode_number), log=self.log
+                    )
+                elif self.stage_type == "Zaber":
+                    self.component = ZaberLSTStage(
+                        simulation_mode=bool(self.simulation_mode_number), log=self.log
+                    )
 
-        else:
-            raise IOError("Stage type not defined in config file.")
+                else:
+                    raise IOError("Stage type not defined in config file.")
+            else:
+                raise RuntimeError("Configuration not found for SAL index.")
 
         self.component.configure(config)
 

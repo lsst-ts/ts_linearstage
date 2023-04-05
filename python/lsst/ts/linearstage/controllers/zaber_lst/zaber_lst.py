@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import pty
+import types
 
 from lsst.ts.linearstage.mocks.mock_zaber_lst import MockSerial
 from serial import SerialException
@@ -134,10 +135,11 @@ class ZaberLSTStage:
         ----------
         config : `types.SimpleNamespace`
         """
-        self.steps_conversion = config.steps_per_mm
+        config.zaber = types.SimpleNamespace(**config.zaber)
+        self.steps_conversion = config.zaber.steps_per_mm
         if not self.simulation_mode:
-            self.port = config.serial_port
-            self.address = config.daisy_chain_address
+            self.port = config.zaber.serial_port
+            self.address = config.zaber.daisy_chain_address
 
     async def connect(self):
         """Connect to the Stage."""

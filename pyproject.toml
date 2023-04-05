@@ -18,7 +18,7 @@ version = { attr = "setuptools_scm.get_version" }
 where = [ "python" ]
 
 [project.scripts]
-run_cbp = "lsst.ts.LinearStage.cli:execute_csc"
+run_linearstage = "lsst.ts.LinearStage.cli:execute_csc"
 
 [tool.setuptools_scm]
 write_to = "python/lsst/ts/linearstage/version.py"
