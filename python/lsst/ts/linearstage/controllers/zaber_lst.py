@@ -1,24 +1,42 @@
-__all__ = ["ZaberLSTStage"]
+# This file is part of ts_linearstage.
+#
+# Developed for the Vera C. Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+__all__ = ["Zaber"]
 
 import asyncio
-import logging
 import os
 import pty
-import types
 
+import yaml
 from lsst.ts.linearstage.mocks.mock_zaber_lst import MockSerial
-from serial import SerialException
 from zaber import serial as zaber
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
+from .stage import Stage
 
 _LOCAL_HOST = "127.0.0.1"
 _STD_TIMEOUT = 20  # standard timeout
 _ZABER_MOVEMENT_TIME = 3  # time to wait for zaber to complete movement/homing
 
 
-class ZaberLSTStage:
+class Zaber(Stage):
     """A class representing the ZaberLST linear stage device.
     This device connected via a serial connection.
 
@@ -63,9 +81,8 @@ class ZaberLSTStage:
 
     """
 
-    def __init__(self, simulation_mode, log) -> None:
-        self.log = log.getChild("ZaberLSTStage")
-        self.connected = False
+    def __init__(self, config, simulation_mode, log) -> None:
+        super().__init__(config=config, simulation_mode=simulation_mode, log=log)
         self.commander = None
         self.device_address = None
         self.address = 1
@@ -122,48 +139,35 @@ class ZaberLSTStage:
             "NU": "A setting is pending to be updated or a reset is pending.",
             "NJ": "Joystick calibration is in progress. Moving the joystick will have no effect.",
         }
-
-        self.simulation_mode = bool(simulation_mode)
         self.log.debug(
             f"Initialized ZaberLSTStage, simulation mode is {self.simulation_mode}"
         )
 
-    def configure(self, config):
-        """Configure the settings.
-
-        Parameters
-        ----------
-        config : `types.SimpleNamespace`
-        """
-        config.zaber = types.SimpleNamespace(**config.zaber)
-        self.steps_conversion = config.zaber.steps_per_mm
-        if not self.simulation_mode:
-            self.port = config.zaber.serial_port
-            self.address = config.zaber.daisy_chain_address
+    @property
+    def connected(self):
+        return self.commander is not None
 
     async def connect(self):
         """Connect to the Stage."""
         if not self.simulation_mode:
             self.commander = zaber.AsciiDevice(
-                zaber.AsciiSerial(self.port), self.address
+                zaber.AsciiSerial(self.config.serial_port),
+                self.config.daisy_chain_address,
             )
-            self.connected = True
         else:
             main, reader = pty.openpty()
             serial = zaber.AsciiSerial(os.ttyname(main))
             serial._ser = MockSerial("")
-            self.commander = zaber.AsciiDevice(serial, self.address)
-            self.connected = True
+            self.commander = zaber.AsciiDevice(serial, self.config.daisy_chain_address)
         self.log.info("Connected")
 
     async def disconnect(self):
         """Disconnect from the stage."""
         self.commander.port.close()
         self.commander = None
-        self.connected = False  # Why can't this get set? This affects the zaber tests
         self.log.info("Disconnected from stage")
 
-    async def enable_motor(self, value):
+    async def enable_motor(self):
         """This method enables the motor and gets it ready to move.
         This includes transitioning the controller into the enabled/ready
         state and removing the brake (if appropriate).
@@ -176,10 +180,14 @@ class ZaberLSTStage:
         value : `bool`
             True to enable the motor, False to disable the motor.
         """
-        self.log.debug(
-            f"Inside enable_motor with value set to {value}."
-            "Nothing to do for zaberLST stage"
-        )
+        pass
+
+    async def disable_motor(self):
+        """Disable the motor.
+
+        The Zaber motor is always enabled and so this is a noop.
+        """
+        pass
 
     async def move_absolute(self, value):
         """Move the stage using absolute position. Stage must have been
@@ -210,15 +218,14 @@ class ZaberLSTStage:
 
         try:
             reply = self.commander.send(
-                "move abs {}".format(int(value * self.steps_conversion))
+                "move abs {}".format(int(value * self.config.steps_per_mm))
             )
             self.log.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary is False:
                 raise Exception("Command rejected")
-        except TimeoutError as e:
-            self.log.error(e)
-            raise
+        except TimeoutError:
+            self.log.exception("Response timed out")
 
         # Wait 3s for stage to complete motion
         await asyncio.sleep(_ZABER_MOVEMENT_TIME)
@@ -249,24 +256,22 @@ class ZaberLSTStage:
             Raised when serial port times out.
         """
         try:
-            self.log.debug("move rel {}".format(int(value * self.steps_conversion)))
+            self.log.debug("move rel {}".format(int(value * self.config.steps_per_mm)))
             reply = self.commander.send(
-                "move rel {}".format(int(value * self.steps_conversion))
+                "move rel {}".format(int(value * self.config.steps_per_mm))
             )
             self.log.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary is False:
                 raise Exception("Command rejected")
 
-        except TimeoutError as e:
-            self.log.error(e)
-            self.log.info("Command timeout")
-            raise
+        except TimeoutError:
+            self.log.exception("Response timed out")
 
         # Wait 3s for stage to complete motion
         await asyncio.sleep(_ZABER_MOVEMENT_TIME)
 
-    async def get_home(self):
+    async def home(self):
         """Home the Zaber stage by returning to the beginning of the track.
 
         The method begins by forming an AsciiCommand for the home command.
@@ -278,22 +283,14 @@ class ZaberLSTStage:
         The device is polled until idle while returning the appropriate SAL
         codes.
         If the command finishes successfully then the SAL code is logged.
-
-        Raises
-        ------
-        e : `serial.SerialException`
-            Raised when the serial port has a problem.
-
         """
-        cmd = zaber.AsciiCommand("{} home".format(self.address))
+        cmd = zaber.AsciiCommand("{} home".format(self.config.daisy_chain_address))
         try:
             reply = self.commander.send(cmd)
             self.log.info(reply)
             self.check_reply(reply)
-        except SerialException as e:
-            self.log.error(e)
-            self.log.info("Command for device timed out")
-            raise
+        except TimeoutError:
+            self.log.exception("Home command timed out")
 
         # Wait 3s for stage to complete motion
         await asyncio.sleep(_ZABER_MOVEMENT_TIME)
@@ -354,11 +351,6 @@ class ZaberLSTStage:
         -------
         float
             The position of the stage.
-
-        Raises
-        ------
-        e : `serial.SerialException`
-            Raised when serial port has a problem.
         """
         try:
             reply = self.commander.send("get pos")
@@ -366,11 +358,9 @@ class ZaberLSTStage:
             status_dictionary = self.check_reply(reply)
             if status_dictionary:
                 self.log.info("Position captured")
-                return float(float(reply.data) / self.steps_conversion)
-        except SerialException as e:
-            self.log.error(e)
-            self.log.info("Command for device timed out")
-            raise e
+                return float(float(reply.data) / self.config.steps_per_mm)
+        except TimeoutError:
+            self.log.exception("Position response timed out")
 
     def retrieve_status(self):
         """Return the status of the LinearStage.
@@ -379,12 +369,6 @@ class ZaberLSTStage:
         -------
         str
             The status of the LinearStage.
-
-        Raises
-        ------
-        e : `serial.SerialException`
-            Raised when the serial port has a problem.
-
         """
         self.log.debug("retrieve_status - starting")
         try:
@@ -394,29 +378,46 @@ class ZaberLSTStage:
             if status_dictionary:
                 self.log.info("retrieve_status - Status captured")
                 return reply.device_status
-        except SerialException as e:
-            self.log.error(e)
-            raise
+        except TimeoutError:
+            self.log.exception("Status response timed out")
 
-    async def publish(self):
+    async def update(self):
         """Publish the telemetry of the stage."""
         self.position = self.get_position()
         self.status = self.retrieve_status()
 
     async def stop(self):
-        """Stop the movement of the stage.
-
-        Raises
-        ------
-        e : `serial.SerialException`
-            Raised when the serial port has a problem.
-        """
+        """Stop the movement of the stage."""
         try:
             reply = self.commander.send("stop")
             self.log.debug(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary:
                 self.log.info("Device stopped")
-        except SerialException as e:
-            self.log.error(e)
-            raise e
+        except TimeoutError:
+            self.log.exception("Stop command response timed out")
+
+    @classmethod
+    def get_config_schema(cls):
+        return yaml.safe_load(
+            """
+        $schema: http://json-schema.org/2020-12/schema#
+        $id: https://github.com/lsst-ts/ts_LinearStage/blob/master/schema/LinearStage.yaml
+        # title must end with one or more spaces followed by the schema version, which must begin with "v"
+        title: Zaber v1
+        description: Schema for Zaber configuration files
+        type: object
+        properties:
+            serial_port:
+                type: string
+            daisy_chain_address:
+                type: number
+            steps_per_mm:
+                type: number
+        required:
+            - serial_port
+            - daisy_chain_address
+            - steps_per_mm
+        additionalProperties: false
+        """
+        )
