@@ -2,14 +2,14 @@ import yaml
 
 CONFIG_SCHEMA = yaml.safe_load(
     """
-$schema: http://json-schema.org/2020-12/schema#
+$schema: http://json-schema.org/draft-07/schema#
 $id: https://github.com/lsst-ts/ts_LinearStage/blob/master/schema/LinearStage.yaml
 # title must end with one or more spaces followed by the schema version, which must begin with "v"
 title: LinearStage v4
 description: Schema for LinearStage configuration files
 type: object
 properties:
-  linear_stage_config:
+  instances:
     type: array
     items:
         sal_index:
@@ -23,41 +23,17 @@ properties:
             enum:
                 - Zaber
                 - Igus
-        zaber:
-            $ref: #/definitions/zaber_controller
-        igus:
-            $ref: #/definitions/igus_controller
-definitions:
-  zaber_controller:
-    type: object
-    properties:
-      serial_port:
-        type: string
-      daisy_chain_address:
-        type: number
-      steps_per_mm:
-        type: number
-  igus_controller:
-    type: object
-    properties:
-      socket_address:
-        type: string
-        format: hostname
-      socket_port:
-        type: number
-      feed_rate:
-        type: number
-      maximum_stroke:
-        type: number
-      homing_speed:
-        type: number
-      homing_acceleration:
-       type: number
-      homing_timeout:
-        type: number
-      motion_speed:
-        type: number
-      motion_acceleration:
-        type: number
+        stage_config:
+            type: object
+    required:
+        - sal_index
+        - target_position_minimum
+        - target_position_maximum
+        - stage_type
+        - stage_config
+    additionalProperties: false
+required:
+    - instances
+additionalProperties: false
 """
 )

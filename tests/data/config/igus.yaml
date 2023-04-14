@@ -2,13 +2,12 @@
 # Date created: 2020-11-13
 # Description: Configures socket connection to Igus Dryve v1 controller. Being tested on local network for the moment.
 
-linear_stage_config:
-  -
-    sal_index: 1
+instances:
+  - sal_index: 1
     stage_type: Igus
     target_position_maximum: 70
     target_position_minimum: 5
-    igus:
+    stage_config:
       socket_port: 502
       socket_address: 192.168.0.148
       feed_rate: 150

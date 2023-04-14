@@ -1,25 +1,43 @@
-__all__ = ["IgusLinearStageStepper"]
+# This file is part of ts_linearstage.
+#
+# Developed for the Vera C. Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+__all__ = ["Igus"]
 
 import asyncio
-import logging
 import time
-import types
 
 import numpy as np
+import yaml
 from lsst.ts import salobj, utils
 
-from ...mocks import MockIgusDryveController
+from ..mocks import MockIgusDryveController
+from .stage import Stage
 from .telegrams import telegrams_read, telegrams_write  # telegrams_read_errs,
 from .utils import derive_handshake, interpret_read_telegram, read_telegram
 
 _LOCAL_HOST = "127.0.0.1"
 _STD_TIMEOUT = 20  # standard timeout
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
 
-
-class IgusLinearStageStepper:
+class Igus(Stage):
     """A class representing the Igus linear stage devices.
     These devices are driven by stepper motors over a socket
     using the Dryve v1 controller
@@ -62,9 +80,8 @@ class IgusLinearStageStepper:
 
     """
 
-    def __init__(self, simulation_mode, log) -> None:
-        self.log = log.getChild("IgusLinearStageStepper")
-        self.connected = False
+    def __init__(self, config, simulation_mode, log) -> None:
+        super().__init__(config=config, simulation_mode=simulation_mode, log=log)
         self.commander = None
         self.mock_ctrl = None  # mock controller, or None of not constructed
         # Task that waits while connecting to the TCP/IP controller.
@@ -77,25 +94,9 @@ class IgusLinearStageStepper:
         self.status = None
         self.mode_num = None
 
-        self.simulation_mode = bool(simulation_mode)
-
         self.log.debug(
             f"Initialized IgusLinearStageStepper, simulation mode is {self.simulation_mode}"
         )
-
-    def configure(self, config):
-        config.igus = types.SimpleNamespace(**config.igus)
-        self.port = config.igus.socket_port
-        self.address = config.igus.socket_address
-
-        # feed rate *must* be in mm per rotation
-        self.feed_constant = config.igus.feed_rate
-        self.homing_speed = config.igus.homing_speed
-        self.homing_acceleration = config.igus.homing_acceleration
-        self.homing_timeout = config.igus.homing_timeout
-        self.motion_speed = config.igus.motion_speed
-        self.motion_acceleration = config.igus.motion_acceleration
-        self.maximum_stroke = config.igus.maximum_stroke
 
     async def connect(self):
         """Connect to the Igus Dryve controller's TCP/IP port.
@@ -118,7 +119,7 @@ class IgusLinearStageStepper:
         self.log.debug(
             f"Connecting to Igus Dryve, simulation is {bool(self.simulation_mode)}"
         )
-        if self.check_connected:
+        if self.connected:
             raise RuntimeError("Already connected")
 
         if self.simulation_mode == 1:
@@ -128,11 +129,11 @@ class IgusLinearStageStepper:
                 "In simulation, so must set port for TCP/IP "
                 "connection to be auto selected."
             )
-            self.port = 0
+            self.config.socket_port = 0
             await self.start_mock_ctrl()
             host = _LOCAL_HOST
         else:
-            host = self.address
+            host = self.config.socket_address
         try:
             async with self.cmd_lock:
                 if self.simulation_mode != 0:
@@ -140,13 +141,12 @@ class IgusLinearStageStepper:
                         raise RuntimeError(
                             "In simulation mode but no mock controller found."
                         )
-                port = self.port
+                port = self.config.socket_port
                 connect_coro = asyncio.open_connection(host=host, port=port)
                 self.reader, self.writer = await asyncio.wait_for(
                     connect_coro, timeout=self.connection_timeout
                 )
             self.log.debug(f"Connected to Dryve at {host} on port {port}")
-            self.connected = True
 
         except Exception:
             err_msg = f"Could not open connection to host={host}, port={port}"
@@ -169,7 +169,7 @@ class IgusLinearStageStepper:
             raise RuntimeError(err_msg)
 
     @property
-    def check_connected(self):
+    def connected(self):
         if None in (self.reader, self.writer):
             return False
         return True
@@ -190,7 +190,6 @@ class IgusLinearStageStepper:
             finally:
                 writer.close()
         await self.stop_mock_ctrl()
-        self.connected = False
 
     async def start_mock_ctrl(self):
         """Start the mock controller.
@@ -201,7 +200,7 @@ class IgusLinearStageStepper:
         """
 
         assert self.simulation_mode == 1
-        port = self.port
+        port = self.config.socket_port
         host = _LOCAL_HOST
         self.mock_ctrl = MockIgusDryveController(port=port, host=host, log=self.log)
         server_host, server_port = await asyncio.wait_for(
@@ -210,7 +209,7 @@ class IgusLinearStageStepper:
         self.log.debug(
             f"Started Mock TCP/IP Server on host {server_host} and port {server_port}."
         )
-        self.port = server_port
+        self.config.socket_port = server_port
 
     async def stop_mock_ctrl(self):
         """Stop the mock controller, if running."""
@@ -219,7 +218,7 @@ class IgusLinearStageStepper:
         if mock_ctrl:
             await mock_ctrl.stop()
 
-    async def enable_motor(self, value):
+    async def enable_motor(self):
         """This method enables the motor and gets it ready to move.
         This includes transitioning the controller into the enabled/ready
         state and removing the brake (if appropriate).
@@ -231,50 +230,48 @@ class IgusLinearStageStepper:
         value : `bool`
             True to enable the motor, False to disable the motor.
         """
-        self.log.debug(f"Inside enable_motor with value set to {value}")
+        # Enable the motor
+        # first send shutdown
+        self.log.debug("From enable_motor, sending Shutdown")
+        await self.send_telegram(
+            telegrams_write["shutdown"], return_response=False, check_handshake=True
+        )
+        await self.poll_until_result(
+            [telegrams_read["ready_to_switch_on"]],  # byte20=6
+        )
+        # make sure we're in position mode
+        await self.set_mode("position")
 
-        if value:
-            # Enable the motor
-            # first send shutdown
-            self.log.debug("From enable_motor, sending Shutdown")
-            await self.send_telegram(
-                telegrams_write["shutdown"], return_response=False, check_handshake=True
-            )
-            await self.poll_until_result(
-                [telegrams_read["ready_to_switch_on"]],  # byte20=6
-            )
-            # make sure we're in position mode
-            await self.set_mode("position")
+        # then switch on
+        self.log.debug("From enable_motor, sending switch_on")
+        await self.send_telegram(
+            telegrams_write["switch_on"],
+            return_response=False,
+            check_handshake=True,
+        )
+        await self.poll_until_result([telegrams_read["switched_on"]])
+        # then enable
+        self.log.debug("From enable_motor, sending enable_operation")
+        await self.send_telegram(
+            telegrams_write["enable_operation"],
+            return_response=False,
+            check_handshake=True,
+        )
+        await self.poll_until_result([telegrams_read["operation_enabled"]])
 
-            # then switch on
-            self.log.debug("From enable_motor, sending switch_on")
-            await self.send_telegram(
-                telegrams_write["switch_on"],
-                return_response=False,
-                check_handshake=True,
-            )
-            await self.poll_until_result([telegrams_read["switched_on"]])
-            # then enable
-            self.log.debug("From enable_motor, sending enable_operation")
-            await self.send_telegram(
-                telegrams_write["enable_operation"],
-                return_response=False,
-                check_handshake=True,
-            )
-            await self.poll_until_result([telegrams_read["operation_enabled"]])
+        # now set all the required drive parameters
+        await self.set_drive_settings()
 
-            # now set all the required drive parameters
-            await self.set_drive_settings()
-        else:
-            # make sure we're in position mode
-            await self.set_mode("position")
+    async def disable_motor(self):
+        # make sure we're in position mode
+        await self.set_mode("position")
 
-            # Disable the motor
-            self.log.debug("From enable_motor, sending Shutdown")
-            await self.send_telegram(
-                telegrams_write["shutdown"], return_response=False, check_handshake=True
-            )
-            await self.poll_until_result([telegrams_read["ready_to_switch_on"]])
+        # Disable the motor
+        self.log.debug("From enable_motor, sending Shutdown")
+        await self.send_telegram(
+            telegrams_write["shutdown"], return_response=False, check_handshake=True
+        )
+        await self.poll_until_result([telegrams_read["ready_to_switch_on"]])
 
     async def set_drive_settings(self):
         """The dryve requires numerous parameters to be set, all of which
@@ -304,11 +301,11 @@ class IgusLinearStageStepper:
         # sendCommand(bytearray([0, 0, 0, 0, 0, 15, 0, 43, 13, 1, 0, 0, 96,
         #                        146, 1, 0, 0, 0, 2, 112, 23]))
 
-        _feed_constant = round(self.feed_constant * _multi_factor)
+        _feed_constant = round(self.config.feed_rate * _multi_factor)
         if _feed_constant > 2**16:
             # Catch this here because diagnosing the error is tough
             raise NotImplementedError(
-                f"Value for given for feed constant of {self.feed_constant}"
+                f"Value for given for feed constant of {self.config.feed_rate}"
                 f" exceeds limit of {(2 ** 16) / _multi_factor}"
             )
         byte19 = _feed_constant & 0b11111111
@@ -358,15 +355,15 @@ class IgusLinearStageStepper:
         # 6099h_01h Homing speeds Switch --> speed at which it searches
         # for a switch
         # This needs to be in RPM, but the config file
-        # (and self.feed_constant) is in mm/s
+        # (and self.config.feed_constant) is in mm/s
         _homing_speed_rpm = round(
-            self.homing_speed / self.feed_constant * 60 * _multi_factor
+            self.config.homing_speed / self.config.feed_rate * 60 * _multi_factor
         )
         if _homing_speed_rpm > 2**16:
             # Catch this here because diagnosing the error is tough
             raise NotImplementedError(
-                f"Value for given for feed constant of {self.homing_speed}"
-                f" exceeds limit of {(2 ** 16) / self.feed_constant * 60 * _multi_factor}"
+                f"Value for given for feed constant of {self.config.homing_speed}"
+                f" exceeds limit of {(2 ** 16) / self.config.feed_rate * 60 * _multi_factor}"
             )
         byte19 = _homing_speed_rpm & 0b11111111
         byte20 = _homing_speed_rpm >> 8
@@ -438,7 +435,11 @@ class IgusLinearStageStepper:
         # 609Ah Homing acceleration
         # Needs to be in rpm/min^2
         _homing_accel_rpm = round(
-            self.homing_acceleration / self.feed_constant * 60 * 60 * _multi_factor
+            self.config.homing_acceleration
+            / self.config.feed_rate
+            * 60
+            * 60
+            * _multi_factor
         )
 
         byte19 = _homing_accel_rpm & 0b11111111
@@ -482,12 +483,12 @@ class IgusLinearStageStepper:
         # 6081h Profile Velocity
         # Must be multiplied by 100 (_multi_factor)
         # This needs to be in mm/s
-        _motion_speed_rpm = round(self.motion_speed * _multi_factor)
+        _motion_speed_rpm = round(self.config.motion_speed * _multi_factor)
         if _motion_speed_rpm > 2**16:
             # Catch this here because diagnosing the error is tough
             raise NotImplementedError(
-                f"Value for given for feed constant of {self.motion_speed}"
-                f" exceeds limit of {(2 ** 16) / self.feed_constant * 60 * _multi_factor}"
+                f"Value for given for feed constant of {self.config.motion_speed}"
+                f" exceeds limit of {(2 ** 16) / self.config.feed_constant * 60 * _multi_factor}"
             )
         byte19 = _motion_speed_rpm & 0b11111111
         byte20 = _motion_speed_rpm >> 8
@@ -525,7 +526,7 @@ class IgusLinearStageStepper:
         # 6083h Profile Acceleration
         # Needs to be in mm/s^2
         # Must be multiplied by 100 (_multi_factor)
-        _motion_accel_rpm = round(self.motion_acceleration * _multi_factor)
+        _motion_accel_rpm = round(self.config.motion_acceleration * _multi_factor)
 
         byte19 = _motion_accel_rpm & 0b11111111
         byte20 = (_motion_accel_rpm >> 8) & 0b11111111
@@ -649,7 +650,7 @@ class IgusLinearStageStepper:
                 if total_time > timeout:
                     # try to interpret the last message
                     interpretation = interpret_read_telegram(receipt, self.mode_num)
-                    raise TimeoutError(
+                    raise asyncio.TimeoutError(
                         f"Polling time exceeded timeout of {timeout}s "
                         f"without receiving expected result of: \n {result} \n,"
                         f"last received response was: \n {receipt}.\n"
@@ -693,21 +694,27 @@ class IgusLinearStageStepper:
         dist_to_target = np.abs(target - self.position)
 
         # Calculate Distance to get to maximum speed
-        dist_to_max_v = self.motion_speed**2 / (2 * self.motion_acceleration)
+        dist_to_max_v = self.config.motion_speed**2 / (
+            2 * self.config.motion_acceleration
+        )
 
         # Consider case where maximum velocity is never reached
         # So will be accelerating and decelerating only
         if dist_to_target < 2 * dist_to_max_v:
             # Time accelerating for half the distance to the target would be
-            # sqrt(2*(dist_to_target/2)/self.motion_acceleration)
+            # sqrt(2*(dist_to_target/2)/self.config.motion_acceleration)
             # but we simplify this and account for both accel and decel
-            estimated_time = 2 * np.sqrt(dist_to_target / self.motion_acceleration)
+            estimated_time = 2 * np.sqrt(
+                dist_to_target / self.config.motion_acceleration
+            )
         else:
             # Max velocity will be reached
-            time_to_accelerate = np.sqrt(2 * dist_to_max_v / self.motion_acceleration)
+            time_to_accelerate = np.sqrt(
+                2 * dist_to_max_v / self.config.motion_acceleration
+            )
             estimated_time = (
                 2 * time_to_accelerate
-                + (dist_to_target - 2 * dist_to_max_v) / self.motion_speed
+                + (dist_to_target - 2 * dist_to_max_v) / self.config.motion_speed
             )
 
         self.log.info(f"Estimated time to target is {estimated_time:0.3f} seconds.")
@@ -732,7 +739,7 @@ class IgusLinearStageStepper:
         # Check the demand is within the allowed range
         # Note that this may permit the hitting of limit switches
         # the CSC limits the range based on configurations
-        if value < 0 or value > self.maximum_stroke:
+        if value < 0 or value > self.config.maximum_stroke:
             raise ValueError(
                 f"Demanded position of {value} is not between zero and {self.maximum_stroke}"
             )
@@ -892,7 +899,7 @@ class IgusLinearStageStepper:
         await self.poll_until_result([expected_result], cmd=telegrams_write["get_mode"])
         self.log.debug(f"Mode set to {mode}")
 
-    async def get_home(self):
+    async def home(self):
         """This method calls the homing method of the device which is used to
         establish a reference position.
 
@@ -930,7 +937,7 @@ class IgusLinearStageStepper:
         self.log.debug("Starting motion")
         await self.send_telegram(telegrams_write["start_motion"])
         await self.poll_until_result(
-            [telegrams_read["target_reached"]], timeout=self.homing_timeout
+            [telegrams_read["target_reached"]], timeout=self.config.homing_timeout
         )
         # set position profiling mode (1 on byte 19)
         await self.set_mode("position")
@@ -1007,7 +1014,7 @@ class IgusLinearStageStepper:
         self.log.debug(f"Sent status request, received {response}")
         return response
 
-    async def publish(self):
+    async def update(self):
         """Publish the telemetry of the stage."""
 
         self.position = await self.get_position()
@@ -1089,3 +1096,46 @@ class IgusLinearStageStepper:
 
                 if return_response:
                     return data
+
+    @classmethod
+    def get_config_schema(cls):
+        return yaml.safe_load(
+            """
+            $schema: http://json-schema.org/draft-07/schema#
+            $id: https://github.com/lsst-ts/ts_LinearStage/master/python/lsst/ts/linearstage/config_schema.py
+            title: Igus v1
+            description: Schema for Igus configuration files
+            type: object
+            properties:
+                socket_address:
+                    type: string
+                    format: hostname
+                socket_port:
+                    type: number
+                feed_rate:
+                    type: number
+                maximum_stroke:
+                    type: number
+                homing_speed:
+                    type: number
+                homing_acceleration:
+                    type: number
+                homing_timeout:
+                    type: number
+                motion_speed:
+                    type: number
+                motion_acceleration:
+                    type: number
+            required:
+                - socket_address
+                - socket_port
+                - feed_rate
+                - maximum_stroke
+                - homing_speed
+                - homing_acceleration
+                - homing_timeout
+                - motion_speed
+                - motion_acceleration
+            additionalProperties: false
+        """
+        )
