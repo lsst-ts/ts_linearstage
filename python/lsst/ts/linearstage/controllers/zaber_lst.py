@@ -211,7 +211,7 @@ class Zaber(Stage):
         ------
         Exception
             Raised when the command is rejected
-        e : `TimeoutError`
+        zabar.TimeoutError
             Raised when the serial port times out.
 
         """
@@ -252,7 +252,7 @@ class Zaber(Stage):
         ------
         Exception
             Raised when command is rejected.
-        e : `TimeoutError`
+        zabar.TimeoutError
             Raised when serial port times out.
         """
         try:
