@@ -1,3 +1,24 @@
+# This file is part of ts_linearstage.
+#
+# Developed for the Vera C. Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import yaml
 
 CONFIG_SCHEMA = yaml.safe_load(
@@ -5,100 +26,35 @@ CONFIG_SCHEMA = yaml.safe_load(
 $schema: http://json-schema.org/draft-07/schema#
 $id: https://github.com/lsst-ts/ts_LinearStage/blob/master/schema/LinearStage.yaml
 # title must end with one or more spaces followed by the schema version, which must begin with "v"
-title: LinearStage v3
+title: LinearStage v4
 description: Schema for LinearStage configuration files
 type: object
-additionalProperties: false
 properties:
-    stage_type:
-        description: Type of stage being controlled.
-        type: string
-        enum: [Zaber, Igus]
-    target_position_minimum:
-        description: >
-          Minimum target position in mm
-        type: number
-    target_position_maximum:
-        description: >
-          Maximum target position in mm
-        type: number
-    serial_port:
-        description: USB port for the serial interface
-        type: string
-    daisy_chain_address:
-        description: The daisy-chain device address as located in the daisy chain (for Zaber Devices only)
-        type: number
-    steps_per_mm:
-        description: This is approximately the amount of steps in a millimeter (for the Zaber stage only).
-        type: number
-    socket_address:
-        description: The IP address to establish a socket connection (for use with Igus Dryve v1 controllers)
-        type: string
-        format: hostname
-    socket_port:
-        description: >
-          The network port to establish a socket connection (for use with Igus Dryve v1
-          controllers)
-        type: number
-    feed_rate:
-        description: >
-          Distance of travel [mm] per single motor rotation (for use with Igus Dryve v1
-          controllers)
-        type: number
-    maximum_stroke:
-        description: Maximum travel distance (stroke) from the homed position [mm]
-        type: number
-    homing_speed:
-        description: >
-          Speed to use for homing in millimeters per second [mm/s] (for use with Igus Dryve v1
-          controllers)
-        type: number
-    homing_acceleration:
-        description: >
-          Acceleration to use for homing in millimeters per second squared [mm/s^2] (for use with
-          Igus Dryve v1 controllers)
-        type: number
-    homing_timeout:
-        description: >
-          Amount of time to wait for homing to complete before timing out.
-        type: number
-    motion_speed:
-        description: >
-          Speed to use for standard travel motion in millimeters per second [mm/s] (for use with
-          Igus Dryve v1 controllers)
-        type: number
-    motion_acceleration:
-        description: >
-          Acceleration to use for standard travel motion in millimeters per second squared [mm/s^2]
-          (for use with Igus Dryve v1 controllers)
-        type: number
-allOf:
-  - if:
-      properties:
+  instances:
+    type: array
+    items:
+        sal_index:
+            type: number
+        target_position_minimum:
+            type: number
+        target_position_maximum:
+            type: number
         stage_type:
-          const: "Igus"
-    then:
-      required:
-        - socket_address
-        - socket_port
-        - feed_rate
-        - maximum_stroke
-        - homing_speed
-        - homing_acceleration
-        - motion_speed
-        - motion_acceleration
-  - if:
-      properties:
-        stage_type:
-          const: "Zaber"
-    then:
-      required:
+            type: string
+            enum:
+                - Zaber
+                - Igus
+        stage_config:
+            type: object
+    required:
+        - sal_index
         - target_position_minimum
         - target_position_maximum
-        - serial_port
-        - daisy_chain_address
-        # DM-38124
-        - steps_per_mm
-
+        - stage_type
+        - stage_config
+    additionalProperties: false
+required:
+    - instances
+additionalProperties: false
 """
 )

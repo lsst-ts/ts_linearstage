@@ -1,10 +1,28 @@
 # Ticket used to create this file: DM-27546
 # Date created: 2020-11-13
 # Description: Updated v1 version to v2 format. This is a serial port (USB) connection.
+instances:
+  - sal_index: 1
+    target_position_minimum: 5
+    target_position_maximum: 70
+    stage_type: Zaber
+    stage_config:
+      serial_port: /dev/ttyLinearStage1
+      steps_per_mm: 8000
+      daisy_chain_address: 1
 
-stage_type: Zaber
-serial_port: /dev/ttyLinearStage1
-daisy_chain_address: 1
-steps_per_mm: 8000
-target_position_minimum: 5
-target_position_maximum: 70
+  - sal_index: 2
+    target_position_minimum: 5
+    target_position_maximum: 70
+    stage_type: Igus
+    stage_config:
+      socket_port: 502
+      socket_address: 192.168.0.148
+      feed_rate: 150
+      maximum_stroke: 1000
+      homing_speed: 30
+      homing_acceleration: 20
+      homing_timeout: 60
+      motion_speed: 50
+      motion_acceleration: 20
+

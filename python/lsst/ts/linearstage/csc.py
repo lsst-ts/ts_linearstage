@@ -1,13 +1,34 @@
+# This file is part of ts_linearstage.
+#
+# Developed for the Vera C. Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
 __all__ = ["LinearStageCSC"]
 
 import asyncio
+import types
 
 from lsst.ts import salobj, utils
 from lsst.ts.idl.enums import LinearStage
-from lsst.ts.linearstage.controllers.igus_dryve import IgusLinearStageStepper
-from lsst.ts.linearstage.controllers.zaber_lst import ZaberLSTStage
 
-from . import __version__
+from . import __version__, controllers
 from .config_schema import CONFIG_SCHEMA
 
 
@@ -39,6 +60,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         initial_state=salobj.State.STANDBY,
         config_dir=None,
         simulation_mode=0,
+        override=None,
     ):
         super().__init__(
             name="LinearStage",
@@ -47,6 +69,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             config_dir=config_dir,
             initial_state=initial_state,
             simulation_mode=simulation_mode,
+            override=override,
         )
 
         self.component = None
@@ -69,26 +92,23 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         ----------
         config : `types.SimpleNamespace`
         """
-        self.stage_type = config.stage_type
-        self.target_position_minimum = config.target_position_minimum
-        self.target_position_maximum = config.target_position_maximum
+        for instance in config.instances:
+            if self.salinfo.index == instance["sal_index"]:
+                break
+            else:
+                raise RuntimeError(f"NO config found for {self.salinfo.index=}")
+        stage_type = instance["stage_type"]
+        stage_class = getattr(controllers, stage_type)
+        self.validator = salobj.DefaultingValidator(stage_class.get_config_schema())
+        self.target_position_minimum = instance["target_position_minimum"]
+        self.target_position_maximum = instance["target_position_maximum"]
+        stage_config_dict = self.validator.validate(instance["stage_config"])
+        stage_config = types.SimpleNamespace(**stage_config_dict)
 
-        self.log.debug(f"Stage type is {self.stage_type}")
-        self.log.debug(f"Simulation mode number is {self.simulation_mode_number}")
         # Instantiate the class specific to the hardware component
-        if self.stage_type == "Igus":
-            self.component = IgusLinearStageStepper(
-                simulation_mode=bool(self.simulation_mode_number), log=self.log
-            )
-        elif self.stage_type == "Zaber":
-            self.component = ZaberLSTStage(
-                simulation_mode=bool(self.simulation_mode_number), log=self.log
-            )
-
-        else:
-            raise IOError("Stage type not defined in config file.")
-
-        self.component.configure(config)
+        self.component = stage_class(
+            config=stage_config, simulation_mode=self.simulation_mode, log=self.log
+        )
 
     @property
     def detailed_state(self):
@@ -180,7 +200,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             f"Starting telemetry loop using interval of {self.heartbeat_interval} seconds"
         )
         while True:
-            await self.component.publish()
+            await self.component.update()
             await self.tel_position.set_write(position=self.component.position)
             await asyncio.sleep(self.heartbeat_interval)
 
@@ -214,20 +234,21 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             try:
                 if self.summary_state == salobj.State.ENABLED:
                     self.log.debug("Enabling motor")
-                    await self.component.enable_motor(True)
+                    await self.component.enable_motor()
                 else:
                     self.log.debug("Disabling motor")
-                    await self.component.enable_motor(False)
+                    await self.component.disable_motor()
             except Exception as e:
                 err_msg = "Failed to enable or disable motor"
                 await self.fault(code=2, report=f"{err_msg}: {e}")
                 raise e
-
-        elif self.component is not None:
-            # component gets set when config runs, so if no component
-            # is set then do nothing
-            if self.component.connected:
-                await self.component.disconnect()
+        else:
+            if self.component is not None:
+                # component gets set when config runs, so if no component
+                # is set then do nothing
+                if self.component.connected:
+                    await self.component.disconnect()
+                    self.component = None
             self.telemetry_task.cancel()
 
     async def close_tasks(self):
@@ -237,6 +258,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.telemetry_task.cancel()
         if self.component.connected:
             await self.component.disconnect()
+            self.component = None
 
     async def do_getHome(self, data):
         """Home the stage.
@@ -250,7 +272,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.assert_notmoving("getHome")
         await self.report_detailed_state(LinearStage.DetailedState.MOVINGSTATE)
         try:
-            await self.component.get_home()
+            await self.component.home()
         except Exception as e:
             # reset the detailed state
             await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)

@@ -22,12 +22,8 @@ __all__ = ["MockIgusDryveController"]
 
 import asyncio
 
-from ..controllers.igus_dryve.telegrams import (
-    telegrams_read,
-    telegrams_read_errs,
-    telegrams_write,
-)
-from ..controllers.igus_dryve.utils import derive_handshake, read_telegram
+from ..controllers.telegrams import telegrams_read, telegrams_read_errs, telegrams_write
+from ..controllers.utils import derive_handshake, read_telegram
 
 _STD_TIMEOUT = 5  # seconds
 
