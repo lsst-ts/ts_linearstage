@@ -82,16 +82,12 @@ class TestIgusLinearStageStepper(unittest.IsolatedAsyncioTestCase):
 
     async def test_utils_interpret_read_telegram(self):
         # test for one that exists
-        telegram = tuple(
-            [0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 33, 6]
-        )
+        telegram = (0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 33, 6)
         mode = 6
         msg = interpret_read_telegram(telegram, mode)
         self.assertGreater(len(msg), 200)
         # Make sure it fails correctly
-        telegram = tuple(
-            [0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 5, 5]
-        )
+        telegram = (0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 5, 5)
         msg = interpret_read_telegram(telegram, mode)
         self.assertTrue(
             f"The following telegram could not be interpreted: \n {telegram}" in msg

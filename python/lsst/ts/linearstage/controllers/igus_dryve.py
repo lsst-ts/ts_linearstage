@@ -310,30 +310,28 @@ class Igus(Stage):
             )
         byte19 = _feed_constant & 0b11111111
         byte20 = _feed_constant >> 8
-        telegram = tuple(
-            [
-                0,
-                0,
-                0,
-                0,
-                0,
-                15,
-                0,
-                43,
-                13,
-                1,
-                0,
-                0,
-                96,
-                146,
-                1,
-                0,
-                0,
-                0,
-                2,
-                byte19,
-                byte20,
-            ]
+        telegram = (
+            0,
+            0,
+            0,
+            0,
+            0,
+            15,
+            0,
+            43,
+            13,
+            1,
+            0,
+            0,
+            96,
+            146,
+            1,
+            0,
+            0,
+            0,
+            2,
+            byte19,
+            byte20,
         )
         self.log.debug(
             f"About to send feed rate telegram of {telegram}, "
@@ -346,9 +344,7 @@ class Igus(Stage):
         # Set shaft revolutions to 1; refer to manual (Byte 19 = 1)
         # This is hardcoded intentionally as feed rate in config file is
         # PER ROTATION
-        telegram = tuple(
-            [0, 0, 0, 0, 0, 14, 0, 43, 13, 1, 0, 0, 96, 146, 2, 0, 0, 0, 1, 1]
-        )
+        telegram = (0, 0, 0, 0, 0, 14, 0, 43, 13, 1, 0, 0, 96, 146, 2, 0, 0, 0, 1, 1)
         await self.send_telegram(telegram, return_response=False, check_handshake=True)
 
         # Now set homing values
@@ -367,30 +363,28 @@ class Igus(Stage):
             )
         byte19 = _homing_speed_rpm & 0b11111111
         byte20 = _homing_speed_rpm >> 8
-        telegram = tuple(
-            [
-                0,
-                0,
-                0,
-                0,
-                0,
-                15,
-                0,
-                43,
-                13,
-                1,
-                0,
-                0,
-                96,
-                153,
-                1,
-                0,
-                0,
-                0,
-                2,
-                byte19,
-                byte20,
-            ]
+        telegram = (
+            0,
+            0,
+            0,
+            0,
+            0,
+            15,
+            0,
+            43,
+            13,
+            1,
+            0,
+            0,
+            96,
+            153,
+            1,
+            0,
+            0,
+            0,
+            2,
+            byte19,
+            byte20,
         )
         self.log.debug(
             f"About to send 6099h_01h, homing switch speed telegram of {telegram}"
@@ -402,30 +396,28 @@ class Igus(Stage):
         _homing_speed_zero_rpm = round(_homing_speed_rpm / 2.0)
         byte19 = _homing_speed_zero_rpm & 0b11111111
         byte20 = _homing_speed_zero_rpm >> 8
-        telegram = tuple(
-            [
-                0,
-                0,
-                0,
-                0,
-                0,
-                15,
-                0,
-                43,
-                13,
-                1,
-                0,
-                0,
-                96,
-                153,
-                2,
-                0,
-                0,
-                0,
-                2,
-                byte19,
-                byte20,
-            ]
+        telegram = (
+            0,
+            0,
+            0,
+            0,
+            0,
+            15,
+            0,
+            43,
+            13,
+            1,
+            0,
+            0,
+            96,
+            153,
+            2,
+            0,
+            0,
+            0,
+            2,
+            byte19,
+            byte20,
         )
         self.log.debug(
             f"About to send 6099h_02h, homing speed zero telegram of {telegram}"
@@ -445,31 +437,29 @@ class Igus(Stage):
         byte19 = _homing_accel_rpm & 0b11111111
         byte20 = (_homing_accel_rpm >> 8) & 0b11111111
         byte21 = _homing_accel_rpm >> 16
-        telegram = tuple(
-            [
-                0,
-                0,
-                0,
-                0,
-                0,
-                16,
-                0,
-                43,
-                13,
-                1,
-                0,
-                0,
-                96,
-                154,
-                0,
-                0,
-                0,
-                0,
-                3,
-                byte19,
-                byte20,
-                byte21,
-            ]
+        telegram = (
+            0,
+            0,
+            0,
+            0,
+            0,
+            16,
+            0,
+            43,
+            13,
+            1,
+            0,
+            0,
+            96,
+            154,
+            0,
+            0,
+            0,
+            0,
+            3,
+            byte19,
+            byte20,
+            byte21,
         )
         self.log.debug(
             f"About to send 609Ah, homing acceleration telegram of {telegram}, "
@@ -492,30 +482,28 @@ class Igus(Stage):
             )
         byte19 = _motion_speed_rpm & 0b11111111
         byte20 = _motion_speed_rpm >> 8
-        telegram = tuple(
-            [
-                0,
-                0,
-                0,
-                0,
-                0,
-                15,
-                0,
-                43,
-                13,
-                1,
-                0,
-                0,
-                96,
-                129,
-                0,
-                0,
-                0,
-                0,
-                2,
-                byte19,
-                byte20,
-            ]
+        telegram = (
+            0,
+            0,
+            0,
+            0,
+            0,
+            15,
+            0,
+            43,
+            13,
+            1,
+            0,
+            0,
+            96,
+            129,
+            0,
+            0,
+            0,
+            0,
+            2,
+            byte19,
+            byte20,
         )
         self.log.debug(
             f"About to send 6081h, Profile Velocity telegram of {telegram}, "
@@ -531,31 +519,29 @@ class Igus(Stage):
         byte19 = _motion_accel_rpm & 0b11111111
         byte20 = (_motion_accel_rpm >> 8) & 0b11111111
         byte21 = _motion_accel_rpm >> 16
-        telegram = tuple(
-            [
-                0,
-                0,
-                0,
-                0,
-                0,
-                16,
-                0,
-                43,
-                13,
-                1,
-                0,
-                0,
-                96,
-                131,
-                0,
-                0,
-                0,
-                0,
-                3,
-                byte19,
-                byte20,
-                byte21,
-            ]
+        telegram = (
+            0,
+            0,
+            0,
+            0,
+            0,
+            16,
+            0,
+            43,
+            13,
+            1,
+            0,
+            0,
+            96,
+            131,
+            0,
+            0,
+            0,
+            0,
+            3,
+            byte19,
+            byte20,
+            byte21,
         )
         self.log.debug(
             f"About to send 6083h, profile acceleration telegram of {telegram}, "
@@ -760,32 +746,30 @@ class Igus(Stage):
         byte20 = (_value >> 8) & 0b11111111
         byte21 = (_value >> 16) & 0b11111111
         byte22 = _value >> 24
-        _telegram = tuple(
-            [
-                0,
-                0,
-                0,
-                0,
-                0,
-                17,
-                0,
-                43,
-                13,
-                1,
-                0,
-                0,
-                96,
-                122,
-                0,
-                0,
-                0,
-                0,
-                4,
-                byte19,
-                byte20,
-                byte21,
-                byte22,
-            ]
+        _telegram = (
+            0,
+            0,
+            0,
+            0,
+            0,
+            17,
+            0,
+            43,
+            13,
+            1,
+            0,
+            0,
+            96,
+            122,
+            0,
+            0,
+            0,
+            0,
+            4,
+            byte19,
+            byte20,
+            byte21,
+            byte22,
         )
 
         await self.send_telegram(
@@ -843,57 +827,53 @@ class Igus(Stage):
         self.log.debug(f"Setting Mode to {mode}")
 
         # Set operation modes in object 6060h Modes of Operation
-        _telegram = tuple(
-            [
-                0,
-                0,
-                0,
-                0,
-                0,
-                14,
-                0,
-                43,
-                13,
-                1,
-                0,
-                0,
-                96,
-                96,
-                0,
-                0,
-                0,
-                0,
-                1,
-                self.mode_num,
-            ]
+        _telegram = (
+            0,
+            0,
+            0,
+            0,
+            0,
+            14,
+            0,
+            43,
+            13,
+            1,
+            0,
+            0,
+            96,
+            96,
+            0,
+            0,
+            0,
+            0,
+            1,
+            self.mode_num,
         )
 
         await self.send_telegram(
             _telegram, check_handshake=True, return_response=False, timeout=2
         )
-        expected_result = tuple(
-            [
-                0,
-                0,
-                0,
-                0,
-                0,
-                14,
-                0,
-                43,
-                13,
-                0,
-                0,
-                0,
-                96,
-                97,
-                0,
-                0,
-                0,
-                0,
-                1,
-                self.mode_num,
-            ]
+        expected_result = (
+            0,
+            0,
+            0,
+            0,
+            0,
+            14,
+            0,
+            43,
+            13,
+            0,
+            0,
+            0,
+            96,
+            97,
+            0,
+            0,
+            0,
+            0,
+            1,
+            self.mode_num,
         )
         # Now ask for mode and it must return the requested mode
         await self.poll_until_result([expected_result], cmd=telegrams_write["get_mode"])
@@ -1082,7 +1062,7 @@ class Igus(Stage):
 
                 # telegrams should always be tuples
                 # required for hashing purposes
-                data = tuple(list(line))
+                data = tuple(line)
 
                 if check_handshake:
                     expected_handshake = derive_handshake(cmd)
