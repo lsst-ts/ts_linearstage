@@ -195,7 +195,3 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     else:
                         posit = await self.remote.tel_position.next(flush=True)
                         assert posit.position == pytest.approx(21.2, abs=0.05)
-
-
-if __name__ == "__main__":
-    unittest.main()
