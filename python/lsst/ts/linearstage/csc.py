@@ -95,8 +95,8 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         for instance in config.instances:
             if self.salinfo.index == instance["sal_index"]:
                 break
-            else:
-                raise RuntimeError(f"NO config found for {self.salinfo.index=}")
+        if self.salinfo.index != instance["sal_index"]:
+            raise RuntimeError(f"No configuration found for {self.salinfo.index=}.")
         stage_type = instance["stage_type"]
         stage_class = getattr(controllers, stage_type)
         self.validator = salobj.DefaultingValidator(stage_class.get_config_schema())
