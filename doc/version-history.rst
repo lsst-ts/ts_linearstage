@@ -8,6 +8,11 @@ Version History
 .. No new work should be required in order to complete this section.
 .. Below is an example of a version history format.
 
+v1.2.1
+======
+* Fix check index if statement so that it doesn't raise if index is not found first.
+* Clean up pyproject.toml and meta.yaml
+
 v1.2.0
 ======
 * Update precommit to black v23, isort 5.12 & check-yaml 4.4.
