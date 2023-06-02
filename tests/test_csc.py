@@ -67,6 +67,16 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                         ]
                     )
 
+    @pytest.mark.xfail()
+    async def test_invalid_index(self):
+        async with self.make_csc(
+            index=3,
+            initial_state=salobj.State.STANDBY,
+            simulation_mode=1,
+            config_dir=TEST_CONFIG_DIR,
+        ):
+            await self.remote.cmd_start.set_start(timeout=10)
+
     # This will work with salobj 6.1 when it's released
     # async def test_telemetry(self):
     #     # This doesn't grab the config

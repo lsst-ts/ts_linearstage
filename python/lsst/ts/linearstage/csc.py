@@ -256,7 +256,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.log.debug("Closing tasks")
         await super().close_tasks()
         self.telemetry_task.cancel()
-        if self.component.connected:
+        if self.component is not None and self.component.connected:
             await self.component.disconnect()
             self.component = None
 
