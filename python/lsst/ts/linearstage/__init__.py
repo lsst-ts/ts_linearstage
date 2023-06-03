@@ -26,6 +26,7 @@ except ImportError:
     __version__ = "?"
 
 
+from .cli import *
 from .config_schema import *
 from .controllers import *
 from .csc import *

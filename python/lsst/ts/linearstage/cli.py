@@ -24,7 +24,7 @@ __all__ = ["execute_csc"]
 
 import asyncio
 
-from . import LinearStageCSC
+from .csc import LinearStageCSC
 
 
 def execute_csc():
