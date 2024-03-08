@@ -15,6 +15,7 @@ test:
         - ts-conda-build =0.4
         - ts-idl {{ idl_version }}
         - ts-salobj {{ salobj_version }}
+        - parameterized
     source_files:
         - python
         - bin
@@ -40,3 +41,5 @@ requirements:
         - ts-salobj
         - ts-idl
         - zaber-serial
+        - zaber-motion
+        - ts-tcpip

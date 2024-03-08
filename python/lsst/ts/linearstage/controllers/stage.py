@@ -22,6 +22,8 @@
 
 __all__ = ["Stage"]
 
+import logging
+import types
 from abc import ABC, abstractmethod
 
 
@@ -47,49 +49,79 @@ class Stage(ABC):
         Is the stage in simulation mode?
     """
 
-    def __init__(self, config, log, simulation_mode):
-        self.config = config
-        self.log = log
-        self.simulation_mode = simulation_mode
+    def __init__(
+        self, config: types.SimpleNamespace, log: logging.Logger, simulation_mode: int
+    ):
+        self.config: types.SimpleNamespace = config
+        self.log: logging.Logger = log
+        self.simulation_mode: int = simulation_mode
+
+    # TODO DM-45058 Add a referenced property
+    # @property
+    # @abstractmethod
+    # def referenced(self):
+    #     raise NotImplementedError()
 
     @abstractmethod
-    def move_relative(self):
+    async def move_relative(self, value) -> None:
+        """Move the stage from position to target.
+
+        Parameters
+        ----------
+        value : `float`
+            The target to move by.
+        """
         pass
 
     @abstractmethod
-    def move_absolute(self):
+    async def move_absolute(self, value) -> None:
+        """Move the stage to target.
+
+        Parameters
+        ----------
+        value : `float`
+            The target to move to.
+        """
         pass
 
     @abstractmethod
-    def home(self):
+    async def home(self) -> None:
+        """Home the stage which gives it a reference position."""
         pass
 
     @abstractmethod
-    def enable_motor(self):
+    async def enable_motor(self) -> None:
+        """Enable movement of the motor."""
         pass
 
     @abstractmethod
-    def disable_motor(self):
+    async def disable_motor(self) -> None:
+        """Disable movement of the motor."""
         pass
 
     @abstractmethod
-    def update(self):
+    async def update(self) -> None:
+        """Get the position and status of the stage."""
         pass
 
     @property
     @abstractmethod
-    def connected(self):
+    def connected(self) -> bool:
+        """Is the client connected?"""
         pass
 
     @abstractmethod
-    def connect(self):
+    async def connect(self) -> None:
+        """Connect to the device."""
         pass
 
     @abstractmethod
-    def disconnect(self):
+    async def disconnect(self) -> None:
+        """Disconnect from the device."""
         pass
 
     @classmethod
     @abstractmethod
-    def get_config_schema(cls):
+    def get_config_schema(cls) -> dict:
+        """Get the device specific configuration schema."""
         pass

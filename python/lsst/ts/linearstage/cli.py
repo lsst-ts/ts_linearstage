@@ -28,4 +28,5 @@ from .csc import LinearStageCSC
 
 
 def execute_csc():
+    """Execute the CSC."""
     asyncio.run(LinearStageCSC.amain(index=True))

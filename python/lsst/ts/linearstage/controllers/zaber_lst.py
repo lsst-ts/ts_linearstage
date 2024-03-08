@@ -19,21 +19,215 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["Zaber"]
+__all__ = ["Zaber", "ZaberV2"]
 
 import asyncio
+import logging
 import os
 import pty
+import types
+import typing
 
 import yaml
-from lsst.ts.linearstage.mocks.mock_zaber_lst import MockSerial
+from lsst.ts import salobj
+from lsst.ts.linearstage.mocks.mock_zaber_lst import LinearStageServer, MockSerial
 from zaber import serial as zaber
+from zaber_motion import Units
+from zaber_motion.ascii import Axis, AxisType, Connection, Device
+from zaber_motion.exceptions import CommandFailedException, ConnectionFailedException
 
 from .stage import Stage
 
-_LOCAL_HOST = "127.0.0.1"
-_STD_TIMEOUT = 20  # standard timeout
 _ZABER_MOVEMENT_TIME = 3  # time to wait for zaber to complete movement/homing
+
+
+class ZaberV2(Stage):
+    """Implement Zaber stage with zaber-motion library.
+
+    Parameters
+    ----------
+    config : `types.Simplenamespace`
+        The controller specific schema.
+    log : `logging.Logger`
+        The log of the controller.
+    simulation_mode:
+        Is the controller in simulation mode?
+
+    Attributes
+    ----------
+    client : `None` | `tcpip.Client`
+        The tcpip client that commands the device.
+    mock_server : `None` | `LinearStageServer`
+        The mock server that's started if in simulation mode.
+    position : `None` | `float`
+        The position of the stage along the axis.
+
+    """
+
+    def __init__(
+        self, config: types.SimpleNamespace, log: logging.Logger, simulation_mode: int
+    ) -> None:
+        super().__init__(config, log, simulation_mode)
+        self.client: Connection | None = None
+        self.mock_server: LinearStageServer | None = None
+        self.position: float | None = None
+        self.device: Device | None = None
+        self.axes: list[Axis] = []
+
+    @property
+    def connected(self) -> bool:
+        """Is the client connected?"""
+        # if client is not None assume connected since zaber=motion
+        # does not provide check for connection status.
+        if self.client is not None:
+            return True
+        else:
+            return False
+
+    @property
+    def referenced(self):
+        return self.device.all_axes.is_homed()
+
+    async def _perform(self, command_name: str, **kwargs: typing.Any):
+        """Send a command to the axis.
+
+        Parameters
+        ----------
+        command_name : `str`
+            Name of the method to call.
+        kwargs : `typing.Any`
+            kwargs for the command.
+
+        Raises
+        ------
+        RuntimeError
+            Raised when device is none.
+        CommandFailedException
+            Raised when a command is rejected by the axis.
+        """
+        if self.device is None:
+            raise RuntimeError("Device has not been received.")
+        for axis in self.axes:
+            try:
+                command = getattr(axis, command_name)
+                return await command(**kwargs)
+            except CommandFailedException:
+                self.log.exception(f"{command} rejected for {axis=}.")
+                raise
+
+    async def connect(self) -> None:
+        """Connect to the device."""
+        if self.simulation_mode:
+            self.mock_server = LinearStageServer(port=0, log=self.log)
+            await self.mock_server.start_task
+            self.config.port = self.mock_server.port
+        try:
+            self.client = await Connection.open_tcp_async(
+                host_name=self.config.hostname, port=self.config.port
+            )
+        except ConnectionFailedException:
+            self.log.exception("Failed to connect to host/port.")
+            raise RuntimeError(f"Unable to connect to host {self.config.hostname}.")
+        self.device = self.client.get_device(self.config.daisy_chain_address)
+        self.log.debug(f"{self.device=}")
+        await self.device.identify_async()
+        self.log.debug(f"{self.device=}")
+        self._check_axes()
+        await self.update()
+
+    async def disconnect(self) -> None:
+        """Disconnect from the device."""
+        if self.client is not None:
+            self.client.close()
+        self.device = None
+        self.axes = []
+        self.client = None
+        if self.simulation_mode:
+            if self.mock_server is not None:
+                await self.mock_server.close()
+            self.mock_server = None
+
+    async def move_relative(self, value: float) -> None:
+        """Move device to position with relative target.
+
+        Parameters
+        ----------
+        value : `float`
+            The amount to move by.
+        """
+        await self._perform(
+            "move_relative_async", position=value, unit=Units.LENGTH_MILLIMETRES
+        )
+
+    async def move_absolute(self, value: float) -> None:
+        """Move the device to value.
+
+        Parameters
+        ----------
+        value : `float`
+            The position to move to.
+        """
+        await self._perform(
+            "move_absolute_async", position=value, unit=Units.LENGTH_MILLIMETRES
+        )
+
+    async def home(self) -> None:
+        """Home the device, needed to gain awareness of position."""
+        await self._perform("home_async")
+
+    async def enable_motor(self) -> None:
+        """Enable the motor to move, not supported by every model."""
+        await self._perform("driver_enable_async")
+
+    async def disable_motor(self) -> None:
+        """Disable the motor from moving, not supported on every model."""
+        await self._perform("driver_disable_async")
+
+    async def update(self) -> None:
+        """Get update of position from device."""
+        position = await self._perform(
+            "get_position_async", unit=Units.LENGTH_MILLIMETRES
+        )
+        self.position = position
+
+    @classmethod
+    def get_config_schema(cls) -> dict:
+        """Get the device specific config schema."""
+        config_schema = """
+        $schema: http://json-schema.org/2020-12/schema#
+        $id: https://github.com/lsst-ts/ts_LinearStage/blob/master/schema/LinearStage.yaml
+        # title must end with one or more spaces followed by the schema version, which must begin with "v"
+        title: Zaber v2
+        description: Schema for Zaber configuration files
+        type: object
+        properties:
+            hostname:
+                type: string
+            port:
+                type: number
+            daisy_chain_address:
+                type: integer
+        required:
+            - hostname
+            - port
+            - daisy_chain_address
+        additionalProperties: false
+        """
+        return yaml.safe_load(config_schema)
+
+    def _check_axes(self):
+        """Get a list of axes available to use.
+
+        Notes
+        -----
+        Axis addresses start at one.
+        """
+        for idx in range(1, self.device.axis_count + 1):
+            axis = self.device.get_axis(idx)
+            self.log.debug(f"{axis=}")
+            if axis.axis_type != AxisType.UNKNOWN:
+                self.axes.append(axis)
+        self.log.debug(f"{self.axes=}")
 
 
 class Zaber(Stage):
@@ -145,6 +339,7 @@ class Zaber(Stage):
 
     @property
     def connected(self):
+        """Is the client connected?"""
         return self.commander is not None
 
     async def connect(self):
@@ -174,11 +369,6 @@ class Zaber(Stage):
 
         In the case of the zaberLST stage, there is no brake and it is
         always enabled
-
-        Parameters
-        ----------
-        value : `bool`
-            True to enable the motor, False to disable the motor.
         """
         pass
 
@@ -223,7 +413,7 @@ class Zaber(Stage):
             self.log.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary is False:
-                raise Exception("Command rejected")
+                raise salobj.ExpectedError("Command rejected")
         except zaber.TimeoutError:
             self.log.exception("Response timed out")
 
@@ -397,8 +587,22 @@ class Zaber(Stage):
         except zaber.TimeoutError:
             self.log.exception("Stop command response timed out")
 
+    async def send_command(self, msg):
+        """Send a command and check the reply for status.
+
+        Parameters
+        ----------
+        msg : `str`
+            The message to be sent.
+        """
+        self.commander.write_str(msg)
+        reply = self.commander.read_str()
+        status = self.check_reply(reply)
+        return status
+
     @classmethod
     def get_config_schema(cls):
+        """Get the device specific schema."""
         return yaml.safe_load(
             """
         $schema: http://json-schema.org/2020-12/schema#
