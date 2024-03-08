@@ -26,7 +26,7 @@ import asyncio
 import types
 
 from lsst.ts import salobj, utils
-from lsst.ts.idl.enums import LinearStage
+from lsst.ts.xml.enums import LinearStage
 
 from . import __version__, controllers
 from .config_schema import CONFIG_SCHEMA
