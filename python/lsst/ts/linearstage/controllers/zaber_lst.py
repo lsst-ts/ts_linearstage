@@ -19,21 +19,169 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["Zaber"]
+__all__ = ["Zaber", "ZaberV2"]
 
 import asyncio
 import os
 import pty
+from unittest.mock import AsyncMock, MagicMock
 
 import yaml
-from lsst.ts.linearstage.mocks.mock_zaber_lst import MockSerial
+from lsst.ts import salobj
+from lsst.ts.linearstage.mocks.mock_zaber_lst import LinearStageServer, MockSerial
 from zaber import serial as zaber
+from zaber_motion import FirmwareVersion, Units
+from zaber_motion.ascii import Connection, DeviceIdentity
+from zaber_motion.exceptions import CommandFailedException, ConnectionFailedException
 
 from .stage import Stage
 
 _LOCAL_HOST = "127.0.0.1"
 _STD_TIMEOUT = 20  # standard timeout
 _ZABER_MOVEMENT_TIME = 3  # time to wait for zaber to complete movement/homing
+
+
+class ZaberV2(Stage):
+    def __init__(self, config, log, simulation_mode):
+        super().__init__(config, log, simulation_mode)
+        self.client = None
+        self.mock_server = None
+
+    @property
+    def connected(self):
+        # Assume client is connected
+        if self.client is not None:
+            return True
+        else:
+            return False
+
+    async def connect(self):
+        if self.simulation_mode:
+            self.mock_server = LinearStageServer(port=0, log=self.log)
+            await self.mock_server.start_task
+            self.config.port = self.mock_server.port
+        try:
+            self.client = Connection.open_tcp(
+                host_name=self.config.hostname, port=self.config.port
+            )
+        except ConnectionFailedException:
+            self.log.exception("Failed to connect to host/port.")
+            raise RuntimeError(f"Unable to connect to host {self.config.hostname}.")
+        self.device = self.client.get_device(self.config.daisy_chain_address)
+        self.log.debug(f"{self.device=}")
+        if self.simulation_mode:
+            device_identity = DeviceIdentity()
+            device_identity.axis_count = 1
+            device_identity.device_id = 11111
+            device_identity.serial_number = 22222
+            device_identity.name = "Fake Device"
+            device_identity.firmware_version = FirmwareVersion(
+                major=7, minor=38, build=0
+            )
+            device_identity.is_modified = False
+            device_identity.is_integrated = False
+            self.device.__retrieve_identity = MagicMock(return_value=device_identity)
+            self.device.__retrieve_is_identified = MagicMock(return_value=True)
+            self.device.identify_async = AsyncMock(return_value=device_identity)
+            self.device.identify = MagicMock(return_value=device_identity)
+            self.device.__retrieve_identity()
+            self.log.debug("Device patched.")
+            self.log.debug(f"{self.device=}")
+        await self.device.identify_async()
+        self.log.debug(f"{self.device=}")
+
+    async def disconnect(self):
+        self.client.close()
+        self.client = None
+        self.device = None
+        if self.simulation_mode:
+            await self.mock_server.close()
+            self.mock_server = None
+        return super().disconnect()
+
+    async def move_relative(self, value):
+        for axis_index in range(self.device.axis_count):
+            axis = self.device.get_axis(axis_index + 1)
+            try:
+                await axis.move_relative_async(
+                    position=value, unit=Units.LENGTH_MILLIMETRES
+                )
+            except CommandFailedException:
+                self.log.exception("Move relative failed.")
+        return super().move_relative()
+
+    async def move_absolute(self, value):
+        device = self.device
+        for axis_index in range(device.axis_count):
+            axis = device.get_axis(axis_index + 1)
+            try:
+                axis.move_absolute(position=value, unit=Units.LENGTH_MILLIMETRES)
+            except CommandFailedException:
+                self.log.exception("Move absolute failed.")
+        return super().move_absolute()
+
+    async def home(self):
+        device = self.device
+        for axis_index in range(device.axis_count):
+            axis = device.get_axis(axis_index + 1)
+            try:
+                axis.home()
+            except CommandFailedException:
+                self.log.exception("Home failed.")
+        return super().home()
+
+    async def enable_motor(self):
+        device = self.device
+        for axis_index in range(device.axis_count):
+            axis = device.get_axis(axis_index + 1)
+            try:
+                axis.driver_enable()
+            except CommandFailedException:
+                self.log.exception("Failed to enable motor")
+        return super().enable_motor()
+
+    async def disable_motor(self):
+        for axis_index in range(self.device.axis_count):
+            axis = self.device.get_axis(axis_index + 1)
+            try:
+                axis.driver_disable()
+            except CommandFailedException:
+                self.log.exception("Failed to disable motor.")
+        return super().disable_motor()
+
+    async def update(self):
+        for axis_index in range(self.device.axis_count):
+            axis = self.device.get_axis(axis_index + 1)
+            try:
+                position = await axis.get_position_async(Units.LENGTH_MILLIMETRES)
+                return position
+            except CommandFailedException:
+                self.log.exception("Failed to get position.")
+        return super().update()
+
+    @classmethod
+    def get_config_schema(cls):
+        config_schema = """
+        $schema: http://json-schema.org/2020-12/schema#
+        $id: https://github.com/lsst-ts/ts_LinearStage/blob/master/schema/LinearStage.yaml
+        # title must end with one or more spaces followed by the schema version, which must begin with "v"
+        title: Zaber v2
+        description: Schema for Zaber configuration files
+        type: object
+        properties:
+            hostname:
+                type: string
+            port:
+                type: number
+            daisy_chain_address:
+                type: integer
+        required:
+            - hostname
+            - port
+            - daisy_chain_address
+        additionalProperties: false
+        """
+        return yaml.safe_load(config_schema)
 
 
 class Zaber(Stage):
@@ -180,14 +328,14 @@ class Zaber(Stage):
         value : `bool`
             True to enable the motor, False to disable the motor.
         """
-        pass
+        self.log.info("Zaber stage has no brake and so this is a noop.")
 
     async def disable_motor(self):
         """Disable the motor.
 
         The Zaber motor is always enabled and so this is a noop.
         """
-        pass
+        self.log.info("Zaber stage has no brake and so this is a noop.")
 
     async def move_absolute(self, value):
         """Move the stage using absolute position. Stage must have been
@@ -223,7 +371,7 @@ class Zaber(Stage):
             self.log.info(reply)
             status_dictionary = self.check_reply(reply)
             if status_dictionary is False:
-                raise Exception("Command rejected")
+                raise salobj.ExpectedError("Command rejected")
         except zaber.TimeoutError:
             self.log.exception("Response timed out")
 
@@ -396,6 +544,12 @@ class Zaber(Stage):
                 self.log.info("Device stopped")
         except zaber.TimeoutError:
             self.log.exception("Stop command response timed out")
+
+    async def send_command(self, msg):
+        self.commander.write_str(msg)
+        reply = self.commander.read_str()
+        status = self.check_reply(reply)
+        return status
 
     @classmethod
     def get_config_schema(cls):

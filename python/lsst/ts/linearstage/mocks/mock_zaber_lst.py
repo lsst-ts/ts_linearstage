@@ -26,7 +26,21 @@ import logging
 import queue
 
 import serial
-from zaber.serial import AsciiCommand
+from lsst.ts import tcpip
+
+
+class LinearStageServer(tcpip.OneClientReadLoopServer):
+    def __init__(self, *, port: int | None, log: logging.Logger) -> None:
+        super().__init__(
+            port=port, host=tcpip.LOCAL_HOST, log=log, name="Zaber Mock Server"
+        )
+        self.device = MockLST()
+
+    async def read_and_dispatch(self) -> None:
+        command = await self.read_str()
+        self.log.info(f"{command=} received.")
+        reply = self.device.parse_message(command)
+        await self.write_str(reply)
 
 
 class MockSerial:
@@ -129,7 +143,7 @@ class MockSerial:
             The command message.
         """
         self.log.info(data)
-        msg = self.device.parse_message(data)
+        msg = self.device.parse_message(data.decode())
         self.log.debug(msg)
         self.message_queue.put(msg)
         self.log.info("Putting into queue")
@@ -159,56 +173,85 @@ class MockLST:
         self.log.info("MockLST created")
 
     def parse_message(self, msg):
-        """Parse and return the result of the message.
-
-        Parameters
-        ----------
-        msg : `bytes`
-            The message to parse.
-
-        Returns
-        -------
-        reply : `bytes`
-            The reply of the command parsed.
-
-        Raises
-        ------
-        NotImplementedError
-            Raised when command is not implemented.
-        """
-        self.log.info(msg)
-        msg = AsciiCommand(msg)
-        self.log.info(msg)
-        split_msg = msg.data.split(" ")
-        self.log.debug(split_msg)
-        if any(char.isdigit() for char in split_msg[-1]):
-            parameter = split_msg[-1]
-            command = split_msg[:-1]
-        else:
-            parameter = None
-            command = split_msg
-        self.log.debug(parameter)
-        if command != []:
-            command_name = "_".join(command)
-        else:
-            command_name = ""
-        self.log.debug(command_name)
+        try:
+            self.log.info(f"{msg=} received.")
+            msg = msg.rstrip("\r\n").split(" ")
+            msg[0].lstrip("/")
+            msg[1]
+            command = msg[2]
+            parameters = msg[3:]
+        except IndexError:
+            reply = self.do_status()
+            return reply
         methods = inspect.getmembers(self, inspect.ismethod)
-        if command_name == "":
-            return self.do_get_status()
-        else:
-            for name, func in methods:
-                if name == f"do_{command_name}":
-                    self.log.debug(name)
-                    if parameter is None:
-                        reply = func()
-                    else:
-                        reply = func(parameter)
-                    self.log.debug(reply)
+        for name, func in methods:
+            if name == f"do_{command}":
+                if parameters:
+                    reply = func(*parameters)
                     return reply
-        raise NotImplementedError()
+                else:
+                    reply = func()
+                    return reply
 
-    def do_get_pos(self):
+        self.log.info(f"{command} not supported.")
+
+    # def parse_message(self, msg):
+    #     """Parse and return the result of the message.
+
+    #     Parameters
+    #     ----------
+    #     msg : `bytes`
+    #         The message to parse.
+
+    #     Returns
+    #     -------
+    #     reply : `bytes`
+    #         The reply of the command parsed.
+
+    #     Raises
+    #     ------
+    #     NotImplementedError
+    #         Raised when command is not implemented.
+    #     """
+    #     self.log.info(msg)
+    #     msg = AsciiCommand(msg)
+    #     self.log.info(msg)
+    #     split_msg = msg.data.split(" ")
+    #     self.log.debug(split_msg)
+    #     if any(char.isdigit() for char in split_msg[-1]):
+    #         parameter = split_msg[-1]
+    #         command = split_msg[:-1]
+    #     else:
+    #         parameter = None
+    #         command = split_msg
+    #     self.log.debug(parameter)
+    #     if command != []:
+    #         command_name = "_".join(command)
+    #     else:
+    #         command_name = ""
+    #     self.log.debug(command_name)
+    #     methods = inspect.getmembers(self, inspect.ismethod)
+    #     if command_name == "":
+    #         return self.do_get_status()
+    #     else:
+    #         for name, func in methods:
+    #             if name == f"do_{command_name}":
+    #                 self.log.debug(name)
+    #                 if parameter is None:
+    #                     reply = func()
+    #                 else:
+    #                     reply = func(parameter)
+    #                 self.log.debug(reply)
+    #                 return reply
+    #     raise NotImplementedError()
+
+    def do_identify(self):
+        return f"@{self.device_number} 0 OK {self.status} -- 0"
+
+    def do_status(self):
+        return f"@{self.device_number} 0 OK {self.status} -- 0"
+
+    def do_get(self, field):
         """Return the position of the device.
 
         Returns
@@ -216,17 +259,15 @@ class MockLST:
         str
             The formatted reply
         """
-        return f"@{self.device_number} 0 OK {self.status} -- {self.position}"
-
-    def do_get_status(self):
-        """Return the status of the device.
-
-        Returns
-        -------
-        str
-            The formatted reply.
-        """
-        return f"@{self.device_number} 0 OK {self.status} -- 0"
+        match field:
+            case "pos":
+                return f"@{self.device_number} 0 OK {self.status} -- {self.position}"
+            case "status":
+                return f"@{self.device_number} 0 OK {self.status} -- 0"
+            case "device.id":
+                return f"@{self.device_number} 0 OK {self.status} -- 30342"
+            case _:
+                self.log.info(f"{field=} is not recognized.")
 
     def do_home(self):
         """Home the device.
@@ -238,7 +279,7 @@ class MockLST:
         """
         return f"@{self.device_number} 0 OK {self.status} -- 0"
 
-    def do_move_abs(self, position):
+    def do_move(self, mode, position):
         """Move the device using absolute position.
 
         Parameters
@@ -250,20 +291,11 @@ class MockLST:
         str
             The formatted reply
         """
-        self.position = int(position)
-        return f"@{self.device_number} 0 OK {self.status} -- 0"
-
-    def do_move_rel(self, position):
-        """Move the device using relative position.
-
-        Parameters
-        ----------
-        position : `int`
-
-        Returns
-        -------
-        str
-            The formatted reply.
-        """
-        self.position += int(position)
+        match mode:
+            case "abs":
+                self.position = int(position)
+            case "rel":
+                self.position += int(position)
+            case _:
+                self.log.info(f"{mode=} is not recognized.")
         return f"@{self.device_number} 0 OK {self.status} -- 0"
