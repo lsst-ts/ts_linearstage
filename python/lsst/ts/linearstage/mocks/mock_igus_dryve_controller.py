@@ -109,7 +109,7 @@ class MockIgusDryveController:
             self.telegram_incoming["unexpected_response_check"]: (
                 False,
                 self.do_set_weird_state1,
-            )
+            ),
             # "MV": (True, self.do_set_cmd_az),
         }
 
