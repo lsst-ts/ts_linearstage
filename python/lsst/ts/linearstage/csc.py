@@ -23,6 +23,7 @@
 __all__ = ["LinearStageCSC"]
 
 import asyncio
+import sys
 import types
 
 from lsst.ts import salobj, utils
@@ -99,6 +100,16 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             raise RuntimeError(f"No configuration found for {self.salinfo.index=}.")
         stage_type = instance["stage_type"]
         stage_class = getattr(controllers, stage_type)
+        # TODO DM-42420 Solve the dependency not being available in
+        # cycle revison 2.
+
+        # Go to fault state if dependency is not importable
+        if stage_class == "ZaberV2":
+            if "zaber_motion" not in sys.modules:
+                await self.fault(
+                    code=0,
+                    report="Zaber motion library is not importable, the dependency is not installed.",
+                )
         self.validator = salobj.DefaultingValidator(stage_class.get_config_schema())
         self.target_position_minimum = instance["target_position_minimum"]
         self.target_position_maximum = instance["target_position_maximum"]

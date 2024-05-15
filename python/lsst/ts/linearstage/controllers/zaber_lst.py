@@ -30,9 +30,16 @@ import yaml
 from lsst.ts import salobj
 from lsst.ts.linearstage.mocks.mock_zaber_lst import LinearStageServer, MockSerial
 from zaber import serial as zaber
-from zaber_motion import FirmwareVersion, Units
-from zaber_motion.ascii import Connection, DeviceIdentity
-from zaber_motion.exceptions import CommandFailedException, ConnectionFailedException
+
+try:
+    from zaber_motion import FirmwareVersion, Units
+    from zaber_motion.ascii import Connection, DeviceIdentity
+    from zaber_motion.exceptions import (
+        CommandFailedException,
+        ConnectionFailedException,
+    )
+except ImportError:
+    pass
 
 from .stage import Stage
 
