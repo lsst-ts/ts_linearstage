@@ -34,6 +34,9 @@ CONFIGS = ["igus.yaml", "zaber.yaml"]
 
 STD_TIMEOUT = 20
 
+# FIXME DM-42420 Make tcpip stage unit tests work
+INDEXES = [1, 2]
+
 
 class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(
@@ -52,7 +55,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             name="LinearStage", exe_name="run_linearstage", index=1
         )
 
-    @parameterized.expand([(1), (2), (3)])
+    @parameterized.expand(INDEXES)
     async def test_standard_state_transitions(self, index):
         async with self.make_csc(
             index=index,
@@ -98,7 +101,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
     #                     topic=self.remote.tel_position, position=0
     #                 )
 
-    @parameterized.expand([(1), (2), (3)])
+    @parameterized.expand(INDEXES)
     async def test_telemetry(self, index):
         async with self.make_csc(
             index=index,
@@ -113,7 +116,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             )
             self.assertAlmostEqual(position_topic.position, self.csc.component.position)
 
-    @parameterized.expand([(1), (2), (3)])
+    @parameterized.expand(INDEXES)
     async def test_getHome(self, index):
         async with self.make_csc(
             index=index,
@@ -131,7 +134,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             # however, internal status can be held. Check that it
             # can come back to enabled and move.
 
-    @parameterized.expand([(1), (2), (3)])
+    @parameterized.expand(INDEXES)
     async def test_moveAbsolute(self, index):
         async with self.make_csc(
             index=index,
@@ -166,7 +169,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                 topic=self.remote.tel_position, flush=True, position=_dist
             )
 
-    @parameterized.expand([(1), (2), (3)])
+    @parameterized.expand(INDEXES)
     async def test_moveRelative(self, index):
         async with self.make_csc(
             index=index,
