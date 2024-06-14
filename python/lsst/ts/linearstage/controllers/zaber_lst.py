@@ -177,7 +177,7 @@ class ZaberV2(Stage):
             if axis.axis_type != AxisType.UNKNOWN:
                 try:
                     position = await axis.get_position_async(Units.LENGTH_MILLIMETRES)
-                    self.component.position = position
+                    self.position = position
                     return position
                 except CommandFailedException:
                     self.log.exception("Failed to get position.")

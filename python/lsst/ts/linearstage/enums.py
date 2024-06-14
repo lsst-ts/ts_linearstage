@@ -3,7 +3,7 @@ __all__ = ["ErrorCode"]
 import enum
 
 
-class ErrorCode(enum.Enum):
+class ErrorCode(enum.IntEnum):
     CONNECTION_FAILED = enum.auto()
     DISABLE_MOTOR = enum.auto()
     ENABLE_MOTOR = enum.auto()
