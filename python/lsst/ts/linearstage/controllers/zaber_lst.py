@@ -53,6 +53,7 @@ class ZaberV2(Stage):
         super().__init__(config, log, simulation_mode)
         self.client = None
         self.mock_server = None
+        self.position = None
 
     @property
     def connected(self):
@@ -173,7 +174,7 @@ class ZaberV2(Stage):
             if axis.axis_type != AxisType.UNKNOWN:
                 try:
                     position = await axis.get_position_async(Units.LENGTH_MILLIMETRES)
-                    return position
+                    self.component.position = position
                 except CommandFailedException:
                     self.log.exception("Failed to get position.")
                     raise
