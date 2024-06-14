@@ -31,6 +31,7 @@ from lsst.ts.xml.enums import LinearStage
 
 from . import __version__, controllers
 from .config_schema import CONFIG_SCHEMA
+from .enums import ErrorCode
 
 
 class LinearStageCSC(salobj.ConfigurableCsc):
@@ -235,7 +236,9 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                     )
                 except RuntimeError as e:
                     err_msg = "Failed to establish connection to component"
-                    await self.fault(code=2, report=f"{err_msg}: {e}")
+                    await self.fault(
+                        code=ErrorCode.CONNECTION_FAILED, report=f"{err_msg}: {e}"
+                    )
                     raise e
 
             if self.telemetry_task.done():
@@ -249,10 +252,9 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                 else:
                     self.log.debug("Disabling motor")
                     await self.component.disable_motor()
-            except Exception as e:
+            except Exception:
                 err_msg = "Failed to enable or disable motor"
-                await self.fault(code=2, report=f"{err_msg}: {e}")
-                raise e
+                await self.fault(code=ErrorCode.DISABLE_MOTOR, report=f"{err_msg}")
         else:
             if self.component is not None:
                 # component gets set when config runs, so if no component
@@ -288,7 +290,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             # reset the detailed state
             await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
             err_msg = "Failed to home motor"
-            await self.fault(code=2, report=f"{err_msg}: {e}")
+            await self.fault(code=ErrorCode.HOME, report=f"{err_msg}: {e}")
             raise e
         self.referenced = True
         await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
@@ -313,7 +315,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         except Exception as e:
             err_msg = "Failed to perform absolute position movement"
             await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
-            await self.fault(code=2, report=f"{err_msg}: {e}")
+            await self.fault(code=ErrorCode.MOVE_ABSOLUTE, report=f"{err_msg}: {e}")
             raise e
 
         await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
@@ -331,7 +333,10 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.assert_notmoving("moveRelative")
         self.assert_target_in_range(data.distance, move_type="relative")
         await self.report_detailed_state(LinearStage.DetailedState.MOVINGSTATE)
-        await self.component.move_relative(data.distance)
+        try:
+            await self.component.move_relative(data.distance)
+        except Exception:
+            pass
         await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
 
     async def do_stop(self, data):
@@ -343,5 +348,8 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             Command data.
         """
         self.assert_enabled("stop")
-        await self.component.stop()
+        try:
+            await self.component.stop()
+        except Exception:
+            pass
         await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)

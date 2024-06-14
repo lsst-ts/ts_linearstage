@@ -33,7 +33,7 @@ from zaber import serial as zaber
 
 try:
     from zaber_motion import FirmwareVersion, Units
-    from zaber_motion.ascii import Connection, DeviceIdentity
+    from zaber_motion.ascii import AxisType, Connection, DeviceIdentity
     from zaber_motion.exceptions import (
         CommandFailedException,
         ConnectionFailedException,
@@ -68,7 +68,7 @@ class ZaberV2(Stage):
             await self.mock_server.start_task
             self.config.port = self.mock_server.port
         try:
-            self.client = Connection.open_tcp(
+            self.client = await Connection.open_tcp_async(
                 host_name=self.config.hostname, port=self.config.port
             )
         except ConnectionFailedException:
@@ -109,12 +109,16 @@ class ZaberV2(Stage):
     async def move_relative(self, value):
         for axis_index in range(self.device.axis_count):
             axis = self.device.get_axis(axis_index + 1)
-            try:
-                await axis.move_relative_async(
-                    position=value, unit=Units.LENGTH_MILLIMETRES
-                )
-            except CommandFailedException:
-                self.log.exception("Move relative failed.")
+            if axis.axis_type != AxisType.UNKNOWN:
+                try:
+                    await axis.move_relative_async(
+                        position=value, unit=Units.LENGTH_MILLIMETRES
+                    )
+                except CommandFailedException:
+                    self.log.exception("Move relative failed.")
+                    raise
+            else:
+                self.log.info(f"Skipping {axis.axis_number=}.")
         return super().move_relative()
 
     async def move_absolute(self, value):
@@ -125,45 +129,55 @@ class ZaberV2(Stage):
                 axis.move_absolute(position=value, unit=Units.LENGTH_MILLIMETRES)
             except CommandFailedException:
                 self.log.exception("Move absolute failed.")
+                raise
         return super().move_absolute()
 
     async def home(self):
         device = self.device
         for axis_index in range(device.axis_count):
             axis = device.get_axis(axis_index + 1)
-            try:
-                axis.home()
-            except CommandFailedException:
-                self.log.exception("Home failed.")
+            if axis.axis_type != AxisType.UNKNOWN:
+                try:
+                    await axis.home_async()
+                except CommandFailedException:
+                    self.log.exception("Home failed.")
+                    raise
         return super().home()
 
     async def enable_motor(self):
         device = self.device
         for axis_index in range(device.axis_count):
             axis = device.get_axis(axis_index + 1)
-            try:
-                axis.driver_enable()
-            except CommandFailedException:
-                self.log.exception("Failed to enable motor")
+            if axis.axis_type != AxisType.UNKNOWN:
+                try:
+                    await axis.driver_enable_async()
+                except CommandFailedException:
+                    self.log.exception("Failed to enable motor")
+                    raise
         return super().enable_motor()
 
     async def disable_motor(self):
         for axis_index in range(self.device.axis_count):
             axis = self.device.get_axis(axis_index + 1)
-            try:
-                axis.driver_disable()
-            except CommandFailedException:
-                self.log.exception("Failed to disable motor.")
+            if axis.axis_type != AxisType.UNKNOWN:
+                try:
+                    await axis.driver_disable_async()
+                except CommandFailedException:
+                    self.log.exception("Failed to disable motor.")
+                    raise
         return super().disable_motor()
 
     async def update(self):
         for axis_index in range(self.device.axis_count):
             axis = self.device.get_axis(axis_index + 1)
-            try:
-                position = await axis.get_position_async(Units.LENGTH_MILLIMETRES)
-                return position
-            except CommandFailedException:
-                self.log.exception("Failed to get position.")
+            if axis.axis_type != AxisType.UNKNOWN:
+                try:
+                    position = await axis.get_position_async(Units.LENGTH_MILLIMETRES)
+                    return position
+                except CommandFailedException:
+                    self.log.exception("Failed to get position.")
+                    raise
+
         return super().update()
 
     @classmethod
