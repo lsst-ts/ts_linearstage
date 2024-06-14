@@ -11,3 +11,4 @@ class ErrorCode(enum.Enum):
     MOVE_ABSOLUTE = enum.auto()
     MOVE_RELATIVE = enum.auto()
     POSITION = enum.auto()
+    TELEMETRY = enum.auto()

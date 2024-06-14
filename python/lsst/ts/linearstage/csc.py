@@ -212,8 +212,14 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             f"Starting telemetry loop using interval of {self.heartbeat_interval} seconds"
         )
         while True:
-            await self.component.update()
-            await self.tel_position.set_write(position=self.component.position)
+            try:
+                await self.component.update()
+                await self.tel_position.set_write(position=self.component.position)
+            except Exception:
+                self.log.exception("Telemetry loop failed.")
+                await self.fault(
+                    code=ErrorCode.TELEMETRY, report="Telemetry loop failed."
+                )
             await asyncio.sleep(self.heartbeat_interval)
 
     async def handle_summary_state(self):

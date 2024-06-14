@@ -126,11 +126,14 @@ class ZaberV2(Stage):
         device = self.device
         for axis_index in range(device.axis_count):
             axis = device.get_axis(axis_index + 1)
-            try:
-                axis.move_absolute(position=value, unit=Units.LENGTH_MILLIMETRES)
-            except CommandFailedException:
-                self.log.exception("Move absolute failed.")
-                raise
+            if axis.axis_type == AxisType.UNKNOWN:
+                try:
+                    await axis.move_absolute_async(
+                        position=value, unit=Units.LENGTH_MILLIMETRES
+                    )
+                except CommandFailedException:
+                    self.log.exception("Move absolute failed.")
+                    raise
         return super().move_absolute()
 
     async def home(self):
@@ -175,6 +178,7 @@ class ZaberV2(Stage):
                 try:
                     position = await axis.get_position_async(Units.LENGTH_MILLIMETRES)
                     self.component.position = position
+                    return position
                 except CommandFailedException:
                     self.log.exception("Failed to get position.")
                     raise
