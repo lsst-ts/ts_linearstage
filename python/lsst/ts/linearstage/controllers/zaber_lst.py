@@ -143,16 +143,12 @@ class ZaberV2(Stage):
         value : `float`
             The position to move to.
         """
-        device = self.device
-        # Get the difference in target and position
-        # So that we can use the relative move while accounting for position
-        difference = value - self.position
-        for axis_index in range(device.axis_count):
-            axis = device.get_axis(axis_index + 1)
+        for axis_index in range(self.device.axis_count):
+            axis = self.device.get_axis(axis_index + 1)
             if axis.axis_type == AxisType.UNKNOWN:
                 try:
-                    await axis.move_relative_async(
-                        position=difference, unit=Units.LENGTH_MILLIMETRES
+                    await axis.move_absolute_async(
+                        position=value, unit=Units.LENGTH_MILLIMETRES
                     )
                 except CommandFailedException:
                     self.log.exception("Move absolute failed.")
@@ -161,9 +157,8 @@ class ZaberV2(Stage):
 
     async def home(self):
         """Home the device, needed to gain awareness of position."""
-        device = self.device
-        for axis_index in range(device.axis_count):
-            axis = device.get_axis(axis_index + 1)
+        for axis_index in range(self.device.axis_count):
+            axis = self.device.get_axis(axis_index + 1)
             if axis.axis_type != AxisType.UNKNOWN:
                 try:
                     await axis.home_async()
@@ -174,9 +169,8 @@ class ZaberV2(Stage):
 
     async def enable_motor(self):
         """Enable the motor to move, not supported by every model."""
-        device = self.device
-        for axis_index in range(device.axis_count):
-            axis = device.get_axis(axis_index + 1)
+        for axis_index in range(self.device.axis_count):
+            axis = self.device.get_axis(axis_index + 1)
             if axis.axis_type != AxisType.UNKNOWN:
                 try:
                     await axis.driver_enable_async()
