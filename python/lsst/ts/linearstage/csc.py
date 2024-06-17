@@ -101,8 +101,6 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             raise RuntimeError(f"No configuration found for {self.salinfo.index=}.")
         stage_type = instance["stage_type"]
         stage_class = getattr(controllers, stage_type)
-        # TODO DM-42420 Solve the dependency not being available in
-        # cycle revison 2.
 
         # Go to fault state if dependency is not importable
         if stage_class == "ZaberV2":

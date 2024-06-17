@@ -24,7 +24,6 @@ __all__ = ["Zaber", "ZaberV2"]
 import asyncio
 import os
 import pty
-from unittest.mock import AsyncMock, MagicMock
 
 import yaml
 from lsst.ts import salobj
@@ -32,8 +31,8 @@ from lsst.ts.linearstage.mocks.mock_zaber_lst import LinearStageServer, MockSeri
 from zaber import serial as zaber
 
 try:
-    from zaber_motion import FirmwareVersion, Units
-    from zaber_motion.ascii import AxisType, Connection, DeviceIdentity
+    from zaber_motion import Units
+    from zaber_motion.ascii import AxisType, Connection
     from zaber_motion.exceptions import (
         CommandFailedException,
         ConnectionFailedException,
@@ -49,6 +48,28 @@ _ZABER_MOVEMENT_TIME = 3  # time to wait for zaber to complete movement/homing
 
 
 class ZaberV2(Stage):
+    """Implement Zaber stage with zaber-motion library.
+
+    Parameters
+    ----------
+    config : `types.Simplenamespace`
+        The controller specific schema.
+    log : `logging.Logger`
+        The log of the controller.
+    simulation_mode:
+        Is the controller in simulation mode?
+
+    Attributes
+    ----------
+    client : `None` | `tcpip.Client`
+        The tcpip client that commands the device.
+    mock_server : `None` | `LinearStageServer`
+        The mock server that's started if in simulation mode.
+    position : `None` | `float`
+        The position of the stage along the axis.
+
+    """
+
     def __init__(self, config, log, simulation_mode):
         super().__init__(config, log, simulation_mode)
         self.client = None
@@ -57,6 +78,7 @@ class ZaberV2(Stage):
 
     @property
     def connected(self):
+        """Is the client connected?"""
         # Assume client is connected
         if self.client is not None:
             return True
@@ -64,6 +86,7 @@ class ZaberV2(Stage):
             return False
 
     async def connect(self):
+        """Connect to the device."""
         if self.simulation_mode:
             self.mock_server = LinearStageServer(port=0, log=self.log)
             await self.mock_server.start_task
@@ -77,28 +100,11 @@ class ZaberV2(Stage):
             raise RuntimeError(f"Unable to connect to host {self.config.hostname}.")
         self.device = self.client.get_device(self.config.daisy_chain_address)
         self.log.debug(f"{self.device=}")
-        if self.simulation_mode:
-            device_identity = DeviceIdentity()
-            device_identity.axis_count = 1
-            device_identity.device_id = 11111
-            device_identity.serial_number = 22222
-            device_identity.name = "Fake Device"
-            device_identity.firmware_version = FirmwareVersion(
-                major=7, minor=38, build=0
-            )
-            device_identity.is_modified = False
-            device_identity.is_integrated = False
-            self.device.__retrieve_identity = MagicMock(return_value=device_identity)
-            self.device.__retrieve_is_identified = MagicMock(return_value=True)
-            self.device.identify_async = AsyncMock(return_value=device_identity)
-            self.device.identify = MagicMock(return_value=device_identity)
-            self.device.__retrieve_identity()
-            self.log.debug("Device patched.")
-            self.log.debug(f"{self.device=}")
         await self.device.identify_async()
         self.log.debug(f"{self.device=}")
 
     async def disconnect(self):
+        """Disconnect from the device."""
         self.client.close()
         self.client = None
         self.device = None
@@ -108,6 +114,13 @@ class ZaberV2(Stage):
         return super().disconnect()
 
     async def move_relative(self, value):
+        """Move device to position with relative target.
+
+        Parameters
+        ----------
+        value : `float`
+            The amount to move by.
+        """
         for axis_index in range(self.device.axis_count):
             axis = self.device.get_axis(axis_index + 1)
             if axis.axis_type != AxisType.UNKNOWN:
@@ -123,13 +136,23 @@ class ZaberV2(Stage):
         return super().move_relative()
 
     async def move_absolute(self, value):
+        """Move the device to value.
+
+        Parameters
+        ----------
+        value : `float`
+            The position to move to.
+        """
         device = self.device
+        # Get the difference in target and position
+        # So that we can use the relative move while accounting for position
+        difference = value - self.position
         for axis_index in range(device.axis_count):
             axis = device.get_axis(axis_index + 1)
             if axis.axis_type == AxisType.UNKNOWN:
                 try:
-                    await axis.move_absolute_async(
-                        position=value, unit=Units.LENGTH_MILLIMETRES
+                    await axis.move_relative_async(
+                        position=difference, unit=Units.LENGTH_MILLIMETRES
                     )
                 except CommandFailedException:
                     self.log.exception("Move absolute failed.")
@@ -137,6 +160,7 @@ class ZaberV2(Stage):
         return super().move_absolute()
 
     async def home(self):
+        """Home the device, needed to gain awareness of position."""
         device = self.device
         for axis_index in range(device.axis_count):
             axis = device.get_axis(axis_index + 1)
@@ -149,6 +173,7 @@ class ZaberV2(Stage):
         return super().home()
 
     async def enable_motor(self):
+        """Enable the motor to move, not supported by every model."""
         device = self.device
         for axis_index in range(device.axis_count):
             axis = device.get_axis(axis_index + 1)
@@ -161,6 +186,7 @@ class ZaberV2(Stage):
         return super().enable_motor()
 
     async def disable_motor(self):
+        """Disable the motor from moving, not supported on every model."""
         for axis_index in range(self.device.axis_count):
             axis = self.device.get_axis(axis_index + 1)
             if axis.axis_type != AxisType.UNKNOWN:
@@ -172,6 +198,7 @@ class ZaberV2(Stage):
         return super().disable_motor()
 
     async def update(self):
+        """Get update of position from device."""
         for axis_index in range(self.device.axis_count):
             axis = self.device.get_axis(axis_index + 1)
             if axis.axis_type != AxisType.UNKNOWN:

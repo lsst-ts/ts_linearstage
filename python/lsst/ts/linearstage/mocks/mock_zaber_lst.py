@@ -21,6 +21,7 @@
 
 __all__ = ["MockSerial", "MockLST"]
 
+import asyncio
 import inspect
 import logging
 import queue
@@ -30,17 +31,45 @@ from lsst.ts import tcpip
 
 
 class LinearStageServer(tcpip.OneClientReadLoopServer):
-    def __init__(self, *, port: int | None, log: logging.Logger) -> None:
+    """Implment the mock linearstage server.
+
+    Parameters
+    ----------
+    port : `int | None`
+        The port of the mock server.
+    log : `logging.Logger`
+        The log of the mock server.
+
+    Attributes
+    ----------
+    device : `MockLST`
+        The mock device that handles replies.
+    """
+
+    def __init__(self, port: int | None, log: logging.Logger) -> None:
         super().__init__(
-            port=port, host=tcpip.LOCAL_HOST, log=log, name="Zaber Mock Server"
+            port=port,
+            host=tcpip.LOCAL_HOST,
+            log=log,
+            name="Zaber Mock Server",
+            terminator=b"\n",
         )
-        self.device = MockLST()
+        self.device = MockLSTV2()
 
     async def read_and_dispatch(self) -> None:
-        command = await self.read_str()
+        try:
+            command = await self.read_str()
+        except asyncio.IncompleteReadError as e:
+            # Used for debugging received message
+            self.log.info(f"{e.partial}")
+            raise
         self.log.info(f"{command=} received.")
         reply = self.device.parse_message(command)
         await self.write_str(reply)
+
+
+class MockLSTV2:
+    pass
 
 
 class MockSerial:
@@ -167,11 +196,25 @@ class MockLST:
 
     def __init__(self):
         self.log = logging.getLogger(__name__)
-        self.position = 0
+        self.position = 0.0
         self.status = "IDLE"
         self.device_number = 1
         self.log.info("MockLST created")
+        self.identity = {
+            "_serial_number": 11111,
+            "_name": "Fake device",
+            "_device_id": 111111,
+            "_axis_count": 4,
+            "_firmware_version": {
+                "_major": 7,
+                "_minor": "35",
+                "_build": "13718",
+            },
+            "_is_modified": False,
+            "_is_integrated": False,
+        }
 
+    # TODO Finish mocking message format.
     def parse_message(self, msg):
         try:
             self.log.info(f"{msg=} received.")
@@ -246,7 +289,7 @@ class MockLST:
     #     raise NotImplementedError()
 
     def do_identify(self):
-        return f"@{self.device_number} 0 OK {self.status} -- 0"
+        return self.identity
 
     def do_status(self):
         return f"@{self.device_number} 0 OK {self.status} -- 0"
@@ -264,8 +307,8 @@ class MockLST:
                 return f"@{self.device_number} 0 OK {self.status} -- {self.position}"
             case "status":
                 return f"@{self.device_number} 0 OK {self.status} -- 0"
-            case "device.id":
-                return f"@{self.device_number} 0 OK {self.status} -- 30342"
+            case "deviceid:42":
+                return "@01 0 OK IDLE FO 30342"
             case _:
                 self.log.info(f"{field=} is not recognized.")
 
@@ -293,9 +336,9 @@ class MockLST:
         """
         match mode:
             case "abs":
-                self.position = int(position)
+                self.position = float(position)
             case "rel":
-                self.position += int(position)
+                self.position += float(position)
             case _:
                 self.log.info(f"{mode=} is not recognized.")
         return f"@{self.device_number} 0 OK {self.status} -- 0"

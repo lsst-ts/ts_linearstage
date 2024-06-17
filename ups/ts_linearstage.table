@@ -5,6 +5,9 @@
 # included by low-level LSST packages such as utils or daf_base.
 # Any other package whose interface is used should be listed explicitly
 # rather than assuming it will be included recursively.
+setupRequired(ts_salobj)
+setupRequired(ts_tcpip)
+setupRequired(ts_config_mtcalsys)
 
 
 # The following is boilerplate for all packages.
