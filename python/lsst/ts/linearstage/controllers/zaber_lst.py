@@ -145,7 +145,7 @@ class ZaberV2(Stage):
         """
         for axis_index in range(self.device.axis_count):
             axis = self.device.get_axis(axis_index + 1)
-            if axis.axis_type == AxisType.UNKNOWN:
+            if axis.axis_type != AxisType.UNKNOWN:
                 try:
                     await axis.move_absolute_async(
                         position=value, unit=Units.LENGTH_MILLIMETRES
