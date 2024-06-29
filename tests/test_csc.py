@@ -19,29 +19,38 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
 import pathlib
 import unittest
 
 import pytest
 from lsst.ts import linearstage, salobj
 from lsst.ts.idl.enums.LinearStage import DetailedState
+from parameterized import parameterized
 
 TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
 
 CONFIGS = ["igus.yaml", "zaber.yaml"]
 
+STD_TIMEOUT = 20
+
+INDEXES = [1, 2, 3]
+
 
 class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(
-        self, index, initial_state, config_dir, simulation_mode, **kwargs
+        self,
+        index,
+        initial_state,
+        config_dir=TEST_CONFIG_DIR,
+        simulation_mode=1,
+        override="",
     ):
         return linearstage.LinearStageCSC(
             index=index,
             initial_state=initial_state,
-            config_dir=TEST_CONFIG_DIR,
+            config_dir=config_dir,
             simulation_mode=simulation_mode,
-            override=kwargs.get("override"),
+            override=override,
         )
 
     async def test_bin_script(self):
@@ -49,156 +58,132 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             name="LinearStage", exe_name="run_linearstage", index=1
         )
 
-    async def test_standard_state_transitions(self):
-        for index in range(2):
-            with self.subTest(index=index):
-                async with self.make_csc(
-                    index=index + 1,
-                    initial_state=salobj.State.STANDBY,
-                    simulation_mode=1,
-                    config_dir=TEST_CONFIG_DIR,
-                ):
-                    await self.check_standard_state_transitions(
-                        enabled_commands=[
-                            "getHome",
-                            "moveAbsolute",
-                            "moveRelative",
-                            "stop",
-                        ]
-                    )
-
-    @pytest.mark.xfail()
-    async def test_invalid_index(self):
+    @parameterized.expand(INDEXES)
+    async def test_standard_state_transitions(self, index):
         async with self.make_csc(
-            index=3,
+            index=index,
             initial_state=salobj.State.STANDBY,
             simulation_mode=1,
             config_dir=TEST_CONFIG_DIR,
         ):
-            await self.remote.cmd_start.set_start(timeout=10)
+            await self.check_standard_state_transitions(
+                enabled_commands=[
+                    "getHome",
+                    "moveAbsolute",
+                    "moveRelative",
+                    "stop",
+                ]
+            )
 
-    # This will work with salobj 6.1 when it's released
-    # async def test_telemetry(self):
-    #     # This doesn't grab the config
-    #     configs = ["igus.yaml", "zaber.yaml"]
-    #     configs = ["igus.yaml"]
-    #     for config in configs:
-    #         with self.subTest(config=config):
-    #             logger.debug(f"Using config of {config}")
-    #             async with self.make_csc(
-    #                 index=1,
-    #                 initial_state=salobj.State.ENABLED,
-    #                 simulation_mode=1,
-    #                 config_dir=TEST_CONFIG_DIR,
-    #                 settingsToApply=config,
-    #             ):
-    #                 await self.assert_next_sample(
-    #                     topic=self.remote.tel_position, position=0
-    #                 )
+    async def test_invalid_index(self):
+        with self.assertRaises(salobj.AckError):
+            async with self.make_csc(
+                index=4,
+                initial_state=salobj.State.STANDBY,
+                simulation_mode=1,
+                config_dir=TEST_CONFIG_DIR,
+            ):
+                await self.remote.cmd_start.set_start(timeout=10)
 
-    async def test_telemetry(self):
-        for index in range(2):
-            with self.subTest(index=index):
-                async with self.make_csc(
-                    index=index + 1,
-                    initial_state=salobj.State.STANDBY,
-                    simulation_mode=1,
-                    config_dir=TEST_CONFIG_DIR,
-                ):
-                    await self.remote.cmd_start.set_start()
-                    await self.remote.cmd_enable.set_start()
-                    position_topic = await self.remote.tel_position.next(flush=True)
-                    self.assertAlmostEqual(
-                        position_topic.position, self.csc.component.position
-                    )
+    @parameterized.expand(INDEXES)
+    async def test_telemetry(self, index):
+        async with self.make_csc(
+            index=index,
+            initial_state=salobj.State.ENABLED,
+            simulation_mode=1,
+            config_dir=TEST_CONFIG_DIR,
+        ):
+            position_topic = await self.assert_next_sample(
+                topic=self.remote.tel_position, flush=True
+            )
+            if self.csc.salinfo.index == 2:
+                assert position_topic.position == pytest.approx(1.2)
+            else:
+                assert position_topic.position == pytest.approx(0)
 
-    async def test_getHome(self):
-        for index in range(2):
-            with self.subTest(index=index):
-                async with self.make_csc(
-                    index=index + 1,
-                    initial_state=salobj.State.STANDBY,
-                    simulation_mode=1,
-                    config_dir=TEST_CONFIG_DIR,
-                ):
-                    await self.remote.cmd_start.set_start()
-                    await self.remote.cmd_enable.set_start()
-                    # Bring to enabled with correct config
-                    await self.remote.cmd_getHome.set_start(timeout=10)
+    @parameterized.expand(INDEXES)
+    async def test_getHome(self, index):
+        async with self.make_csc(
+            index=index,
+            initial_state=salobj.State.ENABLED,
+            simulation_mode=1,
+            config_dir=TEST_CONFIG_DIR,
+        ):
+            # Bring to enabled with correct config
+            await self.remote.cmd_getHome.set_start(timeout=STD_TIMEOUT)
 
-                    # At this point, with the igus stage, when you go back to
-                    # standby it disables the motor (applies the brake),
-                    # however, internal status can be held. Check that it
-                    # can come back to enabled and move.
+            # At this point, with the igus stage, when you go back to
+            # standby it disables the motor (applies the brake),
+            # however, internal status can be held. Check that it
+            # can come back to enabled and move.
 
-    async def test_moveAbsolute(self):
-        for index in range(2):
-            with self.subTest(index=index):
-                async with self.make_csc(
-                    index=index + 1,
-                    initial_state=salobj.State.STANDBY,
-                    simulation_mode=1,
-                    config_dir=TEST_CONFIG_DIR,
-                ):
-                    await self.remote.cmd_start.set_start()
-                    await self.remote.cmd_enable.set_start()
-                    _dist = 10  # [mm] - distance to travel
+    @parameterized.expand(INDEXES)
+    async def test_moveAbsolute(self, index):
+        async with self.make_csc(
+            index=index,
+            initial_state=salobj.State.ENABLED,
+            simulation_mode=1,
+            config_dir=TEST_CONFIG_DIR,
+        ):
+            _dist = 10  # [mm] - distance to travel
 
-                    with self.assertRaises(salobj.AckError):
-                        await self.remote.cmd_moveAbsolute.set_start(distance=_dist)
+            with salobj.assertRaisesAckError():
+                await self.remote.cmd_moveAbsolute.set_start(distance=_dist)
+            await self.remote.cmd_getHome.set_start(timeout=STD_TIMEOUT)
+            if hasattr(self.csc.component, "mock_ctrl"):
+                # set current position in the mock
+                self.csc.component.mock_ctrl.current_pos = 0.0
+                # Also set the controller mode since it would normally
+                # get set when homing
+                await self.csc.component.set_mode("position")
 
-                    # shortcut homing
-                    # Now set the referencing to True
-                    self.csc.referenced = True
-                    if hasattr(self.csc.component, "mock_ctrl"):
-                        # set current position in the mock
-                        self.csc.component.mock_ctrl.current_pos = 0.0
-                        # Also set the controller mode since it would normally
-                        # get set when homing
-                        await self.csc.component.set_mode("position")
+            await self.remote.cmd_moveAbsolute.set_start(distance=_dist)
+            await self.assert_next_sample(
+                topic=self.remote.evt_detailedState,
+                detailedState=DetailedState.NOTMOVINGSTATE,
+            )
+            position = await self.assert_next_sample(
+                topic=self.remote.tel_position, flush=True
+            )
+            assert position.position == pytest.approx(10, rel=1.5e-6)
 
-                    await self.remote.cmd_moveAbsolute.set_start(distance=_dist)
-                    await asyncio.sleep(1.5)
-                    await self.assert_next_sample(
-                        topic=self.remote.evt_detailedState,
-                        detailedState=DetailedState.NOTMOVINGSTATE,
-                    )
-                    await self.assert_next_sample(
-                        topic=self.remote.tel_position, flush=True, position=_dist
-                    )
-
-    async def test_moveRelative(self):
-        for index in range(2):
-            with self.subTest(index=index):
-                async with self.make_csc(
-                    index=index + 1,
-                    initial_state=salobj.State.STANDBY,
-                    simulation_mode=1,
-                    config_dir=TEST_CONFIG_DIR,
-                ):
-                    await self.remote.cmd_start.set_start()
-                    await self.remote.cmd_enable.set_start()
-                    await self.remote.cmd_moveRelative.set_start(
-                        distance=10, timeout=15
-                    )
-                    if self.csc.salinfo.index == 1:
-                        await self.assert_next_sample(
-                            topic=self.remote.tel_position, flush=True, position=10
-                        )
-                    else:
-                        # Igus behaves weirdly with this method but no idea
-                        # what
-                        # behavior should be. So just going to handle this
-                        # specially.
-                        posit = await self.remote.tel_position.next(flush=True)
-                        assert posit.position == pytest.approx(11.2, abs=0.05)
-                    await self.remote.cmd_moveRelative.set_start(
-                        distance=10, timeout=15
-                    )
-                    if self.csc.salinfo.index == 1:
-                        await self.assert_next_sample(
-                            topic=self.remote.tel_position, flush=True, position=20
-                        )
-                    else:
-                        posit = await self.remote.tel_position.next(flush=True)
-                        assert posit.position == pytest.approx(21.2, abs=0.05)
+    @parameterized.expand(INDEXES)
+    async def test_moveRelative(self, index):
+        async with self.make_csc(
+            index=index,
+            initial_state=salobj.State.STANDBY,
+            simulation_mode=1,
+            config_dir=TEST_CONFIG_DIR,
+        ):
+            await self.remote.cmd_start.set_start()
+            await self.remote.cmd_enable.set_start()
+            await self.remote.cmd_moveRelative.set_start(
+                distance=10, timeout=STD_TIMEOUT
+            )
+            if self.csc.salinfo.index == 1 or self.csc.salinfo.index == 3:
+                position = await self.assert_next_sample(
+                    topic=self.remote.tel_position, flush=True
+                )
+                assert position.position == pytest.approx(10, rel=1.2e-6)
+            else:
+                # Igus behaves weirdly with this method but no idea
+                # what
+                # behavior should be. So just going to handle this
+                # specially.
+                posit = await self.remote.tel_position.next(
+                    flush=True, timeout=STD_TIMEOUT
+                )
+                assert posit.position == pytest.approx(11.2, abs=0.05)
+            await self.remote.cmd_moveRelative.set_start(
+                distance=10, timeout=STD_TIMEOUT
+            )
+            if self.csc.salinfo.index == 1 or self.csc.salinfo.index == 3:
+                position = await self.assert_next_sample(
+                    topic=self.remote.tel_position, flush=True
+                )
+                assert position.position == pytest.approx(20, rel=1.2e-6)
+            else:
+                posit = await self.remote.tel_position.next(
+                    flush=True, timeout=STD_TIMEOUT
+                )
+                assert posit.position == pytest.approx(21.2, abs=0.05)

@@ -11,18 +11,12 @@ LinearStage
 .. image:: https://img.shields.io/badge/Jenkins-gray.svg
     :target: https://tssw-ci.lsst.org/job/LSST_Telescope-and-Site/job/ts_LinearStage/
 
-.. TODO: Delete the note when the page becomes populated
-
-.. Warning::
-
-   **This CSC documentation is under development and not ready for active use.**
-
 .. _index:overview:
 
 Overview
 ========
 
-:ref:`Contact info <ts_xml:index:master-csc-table:LinearStage>`
+:ref:`Contact info <ts_xml:index:csc-table:LinearStage>`
 
 The LinearStage controls a `Zaber LST single axis linear stage <https://zaber.com/manuals/LST>`_.
 Its purpose is to provide motor control for calibration work done in the Calibration Lab.

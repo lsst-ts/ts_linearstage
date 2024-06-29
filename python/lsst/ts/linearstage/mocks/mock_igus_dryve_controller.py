@@ -28,6 +28,7 @@ from ..controllers.utils import derive_handshake, read_telegram
 _STD_TIMEOUT = 5  # seconds
 
 
+# FIXME DM-45058 Inherit from tcpip.OneClientReadLoopServer
 class MockIgusDryveController:
     """Mock Igus Dryve v1 controller that talks over TCP/IP.
 
@@ -35,6 +36,10 @@ class MockIgusDryveController:
     ----------
     port : int
         TCP/IP port. If 0 then pick an available port.
+    host : `str`
+        The hostname of the mock controller.
+    log : `logging.Logger`
+        The log of the device.
 
     Notes
     -----
@@ -101,7 +106,7 @@ class MockIgusDryveController:
         # Note that the arguments of the dictionary must be hashable
         # This means using tuples instead of dictionaries
 
-        # FIXME: remove the has-data bit boolean
+        # FIXME: DM-45058 remove the has-data bit boolean
         self.dispatch_dict = {
             self.telegram_incoming["status_request"]: (False, self.do_status_request),
             self.telegram_incoming["switch_on"]: (False, self.do_switch_on),
@@ -153,7 +158,7 @@ class MockIgusDryveController:
             if line:
                 try:
                     items = len(line)
-                    # FIXME - remove _cmd and replace with self.cmd
+                    # FIXME DM-45058 - remove _cmd and replace with self.cmd
                     _cmd = tuple(line)
                     self.cmd = tuple(line)
                     # check if command is in dictionary
@@ -193,6 +198,7 @@ class MockIgusDryveController:
                     self.log.exception(f"command {line} failed")
 
     def do_status_request(self):
+        """Perform status request."""
         self.log.debug(
             f"Publishing status requested from status_request command, corresponding to state {self.state}"
         )

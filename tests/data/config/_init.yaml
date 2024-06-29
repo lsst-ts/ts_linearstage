@@ -26,3 +26,11 @@ instances:
       motion_speed: 50
       motion_acceleration: 20
 
+  - sal_index: 3
+    target_position_minimum: 5
+    target_position_maximum: 70
+    stage_type: ZaberV2
+    stage_config:
+      hostname: 127.0.0.1
+      port: 9000
+      daisy_chain_address: 1

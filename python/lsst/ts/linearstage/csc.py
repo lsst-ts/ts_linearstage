@@ -26,10 +26,14 @@ import asyncio
 import types
 
 from lsst.ts import salobj, utils
-from lsst.ts.idl.enums import LinearStage
+from lsst.ts.xml.enums import LinearStage
+from zaber_motion import Library, LogOutputMode
 
 from . import __version__, controllers
 from .config_schema import CONFIG_SCHEMA
+from .enums import ErrorCode
+
+Library.set_log_output(LogOutputMode.STDOUT)
 
 
 class LinearStageCSC(salobj.ConfigurableCsc):
@@ -46,8 +50,10 @@ class LinearStageCSC(salobj.ConfigurableCsc):
 
     Attributes
     ----------
-    component : `ZaberLSTStage` or `IgusLinearStageStepper`
+    component : `Stage`
+    referenced : `bool`
     telemetry_task : `asyncio.Future`
+    simulation_mode_number : `int`
     """
 
     valid_simulation_modes = (0, 1)
@@ -73,9 +79,9 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         )
 
         self.component = None
-        self.referenced = False
         self.telemetry_task = utils.make_done_future()
         self.simulation_mode_number = simulation_mode
+        self.referenced = False
         self.log.debug(
             f"LinearStage CSC initialized, simulation number is set to {self.simulation_mode_number}"
         )
@@ -126,16 +132,12 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         return LinearStage.DetailedState(self.evt_detailedState.data.detailedState)
 
     async def report_detailed_state(self, new_sub_state):
+        """Report the new sub state."""
         new_sub_state = LinearStage.DetailedState(new_sub_state)
         await self.evt_detailedState.set_write(detailedState=new_sub_state)
 
-    def assert_referenced(self, action):
+    def assert_referenced(self):
         """Assert the stage is referenced.
-
-        Parameters
-        ----------
-        action : `str`
-            The name of the command to check.
 
         Raises
         ------
@@ -200,8 +202,13 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             f"Starting telemetry loop using interval of {self.heartbeat_interval} seconds"
         )
         while True:
-            await self.component.update()
-            await self.tel_position.set_write(position=self.component.position)
+            try:
+                await self.component.update()
+                await self.tel_position.set_write(position=self.component.position)
+            except Exception as e:
+                errmsg = "Telemetry loop failed."
+                self.log.exception(errmsg)
+                await self.fault(code=ErrorCode.TELEMETRY, report=f"{errmsg}: {e}")
             await asyncio.sleep(self.heartbeat_interval)
 
     async def handle_summary_state(self):
@@ -224,7 +231,9 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                     )
                 except RuntimeError as e:
                     err_msg = "Failed to establish connection to component"
-                    await self.fault(code=2, report=f"{err_msg}: {e}")
+                    await self.fault(
+                        code=ErrorCode.CONNECTION_FAILED, report=f"{err_msg}: {e}"
+                    )
                     raise e
 
             if self.telemetry_task.done():
@@ -240,7 +249,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                     await self.component.disable_motor()
             except Exception as e:
                 err_msg = "Failed to enable or disable motor"
-                await self.fault(code=2, report=f"{err_msg}: {e}")
+                await self.fault(code=ErrorCode.DISABLE_MOTOR, report=f"{err_msg}: {e}")
                 raise e
         else:
             if self.component is not None:
@@ -277,7 +286,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             # reset the detailed state
             await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
             err_msg = "Failed to home motor"
-            await self.fault(code=2, report=f"{err_msg}: {e}")
+            await self.fault(code=ErrorCode.HOME, report=f"{err_msg}: {e}")
             raise e
         self.referenced = True
         await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
@@ -292,7 +301,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         """
         self.assert_enabled("moveAbsolute")
         self.assert_notmoving("moveAbsolute")
-        self.assert_referenced("moveAbsolute")
+        self.assert_referenced()
         self.assert_target_in_range(data.distance, move_type="absolute")
 
         await self.report_detailed_state(LinearStage.DetailedState.MOVINGSTATE)
@@ -302,7 +311,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         except Exception as e:
             err_msg = "Failed to perform absolute position movement"
             await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
-            await self.fault(code=2, report=f"{err_msg}: {e}")
+            await self.fault(code=ErrorCode.MOVE_ABSOLUTE, report=f"{err_msg}: {e}")
             raise e
 
         await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
@@ -320,7 +329,13 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.assert_notmoving("moveRelative")
         self.assert_target_in_range(data.distance, move_type="relative")
         await self.report_detailed_state(LinearStage.DetailedState.MOVINGSTATE)
-        await self.component.move_relative(data.distance)
+        try:
+            await self.component.move_relative(data.distance)
+        except Exception as e:
+            errmsg = "moveRelative command failed"
+            await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
+            await self.fault(code=ErrorCode.MOVE_RELATIVE, report=f"{errmsg}: {e}")
+            raise e
         await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
 
     async def do_stop(self, data):
@@ -332,5 +347,11 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             Command data.
         """
         self.assert_enabled("stop")
-        await self.component.stop()
+        try:
+            await self.component.stop()
+        except Exception as e:
+            errmsg = "Stop failed"
+            await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
+            await self.fault(code=ErrorCode.STOP, report=f"{errmsg}: {e}")
+            raise e
         await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)

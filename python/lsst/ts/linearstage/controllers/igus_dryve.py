@@ -22,18 +22,21 @@
 __all__ = ["Igus"]
 
 import asyncio
+import logging
 import time
+import types
+import typing
 
 import numpy as np
 import yaml
-from lsst.ts import salobj, utils
+from lsst.ts import salobj, tcpip, utils
 
 from ..mocks import MockIgusDryveController
 from .stage import Stage
 from .telegrams import telegrams_read, telegrams_write  # telegrams_read_errs,
 from .utils import derive_handshake, interpret_read_telegram, read_telegram
 
-_LOCAL_HOST = "127.0.0.1"
+_LOCAL_HOST = tcpip.LOCAL_HOST
 _STD_TIMEOUT = 20  # standard timeout
 
 
@@ -80,25 +83,29 @@ class Igus(Stage):
 
     """
 
-    def __init__(self, config, simulation_mode, log) -> None:
+    def __init__(
+        self, config: types.SimpleNamespace, simulation_mode: int, log: logging.Logger
+    ) -> None:
         super().__init__(config=config, simulation_mode=simulation_mode, log=log)
-        self.commander = None
-        self.mock_ctrl = None  # mock controller, or None of not constructed
+        self.mock_ctrl: MockIgusDryveController | None = (
+            None  # mock controller, or None of not constructed
+        )
         # Task that waits while connecting to the TCP/IP controller.
-        self.connect_task = utils.make_done_future()
-        self.reader = None
-        self.writer = None
-        self.cmd_lock = asyncio.Lock()
-        self.connection_timeout = 5
-        self.position = None
-        self.status = None
-        self.mode_num = None
+        self.connect_task: asyncio.Task = utils.make_done_future()
+        # FIXME DM-45058 Convert to a tcpip.Client
+        self.reader: asyncio.StreamReader | None = None
+        self.writer: asyncio.StreamWriter | None = None
+        self.cmd_lock: asyncio.Lock = asyncio.Lock()
+        self.connection_timeout: int = 5
+        self.position: float = 0.0
+        self.status: tuple = tuple()
+        self.mode_num: int = 0
 
         self.log.debug(
             f"Initialized IgusLinearStageStepper, simulation mode is {self.simulation_mode}"
         )
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Connect to the Igus Dryve controller's TCP/IP port.
         Note that dryve must be configured to
         use MODBUS TCP, with a unit identifier of 1.
@@ -131,7 +138,7 @@ class Igus(Stage):
             )
             self.config.socket_port = 0
             await self.start_mock_ctrl()
-            host = _LOCAL_HOST
+            host: str = _LOCAL_HOST
         else:
             host = self.config.socket_address
         try:
@@ -141,8 +148,12 @@ class Igus(Stage):
                         raise RuntimeError(
                             "In simulation mode but no mock controller found."
                         )
-                port = self.config.socket_port
-                connect_coro = asyncio.open_connection(host=host, port=port)
+                port: int = self.config.socket_port
+                connect_coro: typing.Coroutine[
+                    typing.Any,
+                    typing.Any,
+                    tuple[asyncio.StreamReader, asyncio.StreamWriter],
+                ] = asyncio.open_connection(host=host, port=port)
                 self.reader, self.writer = await asyncio.wait_for(
                     connect_coro, timeout=self.connection_timeout
                 )
@@ -156,9 +167,10 @@ class Igus(Stage):
         # Now verify that controller is enabled (DI7 is high)
         # This must be done from the controller GUI or by sending a 24V
         # signal to the input.
-        response = await self.retrieve_status()
+        response: tuple = await self.retrieve_status()
 
         # Check that byte 20 is has bits 0,1,2 set
+        # FIXME DM-45058 add to wizardry.py
         if not (response[20] & 0b111):
             # Disconnect and raise error
             await self.disconnect()
@@ -169,12 +181,14 @@ class Igus(Stage):
             raise RuntimeError(err_msg)
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
+        """Is the client connected?"""
+        # FIXME DM-45058 Change to Client.connected
         if None in (self.reader, self.writer):
             return False
         return True
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """Disconnect from the TCP/IP controller, if connected, and stop
         the mock controller, if running.
         """
@@ -191,7 +205,7 @@ class Igus(Stage):
                 writer.close()
         await self.stop_mock_ctrl()
 
-    async def start_mock_ctrl(self):
+    async def start_mock_ctrl(self) -> None:
         """Start the mock controller.
 
         The simulation mode must be 1.
@@ -211,19 +225,19 @@ class Igus(Stage):
         )
         self.config.socket_port = server_port
 
-    async def stop_mock_ctrl(self):
+    async def stop_mock_ctrl(self) -> None:
         """Stop the mock controller, if running."""
         mock_ctrl = self.mock_ctrl
         self.mock_ctrl = None
         if mock_ctrl:
             await mock_ctrl.stop()
 
-    async def enable_motor(self):
+    async def enable_motor(self) -> None:
         """This method enables the motor and gets it ready to move.
         This includes transitioning the controller into the enabled/ready
         state and removing the brake (if appropriate).
 
-        FIXME: This should also remove any fault conditions
+        FIXME: DM-45058 This should also remove any fault conditions
 
         Parameters
         ----------
@@ -262,7 +276,8 @@ class Igus(Stage):
         # now set all the required drive parameters
         await self.set_drive_settings()
 
-    async def disable_motor(self):
+    async def disable_motor(self) -> None:
+        """Disable the motor."""
         # make sure we're in position mode
         await self.set_mode("position")
 
@@ -273,7 +288,7 @@ class Igus(Stage):
         )
         await self.poll_until_result([telegrams_read["ready_to_switch_on"]])
 
-    async def set_drive_settings(self):
+    async def set_drive_settings(self) -> None:
         """The dryve requires numerous parameters to be set, all of which
         reside in the config file.
         This method sets the parameters right after set to the
@@ -284,7 +299,7 @@ class Igus(Stage):
         # multiplication factor required if we want 0.01 mm precision
         # feed constant and all acceleration, speed and position specs must
         # be multiplied by this number
-        _multi_factor = 100
+        _multi_factor: int = 100
 
         # Start with feed rate values
         # 6092h_01h Feed constant Subindex 1 (Feed)
@@ -301,16 +316,18 @@ class Igus(Stage):
         # sendCommand(bytearray([0, 0, 0, 0, 0, 15, 0, 43, 13, 1, 0, 0, 96,
         #                        146, 1, 0, 0, 0, 2, 112, 23]))
 
-        _feed_constant = round(self.config.feed_rate * _multi_factor)
+        _feed_constant: int = round(self.config.feed_rate * _multi_factor)
         if _feed_constant > 2**16:
             # Catch this here because diagnosing the error is tough
             raise NotImplementedError(
                 f"Value for given for feed constant of {self.config.feed_rate}"
                 f" exceeds limit of {(2 ** 16) / _multi_factor}"
             )
-        byte19 = _feed_constant & 0b11111111
-        byte20 = _feed_constant >> 8
-        telegram = (
+        # FIXME DM-45058 Add to wizardry.py
+        byte19: int = _feed_constant & 0b11111111
+        # FIXME DM-45058 Add to wizardry.py
+        byte20: int = _feed_constant >> 8
+        telegram: tuple = (
             0,
             0,
             0,
@@ -361,7 +378,9 @@ class Igus(Stage):
                 f"Value for given for feed constant of {self.config.homing_speed}"
                 f" exceeds limit of {(2 ** 16) / self.config.feed_rate * 60 * _multi_factor}"
             )
+        # FIXME DM-45058 Add to wizardry.py
         byte19 = _homing_speed_rpm & 0b11111111
+        # FIXME DM-45058 Add to wizardry.py
         byte20 = _homing_speed_rpm >> 8
         telegram = (
             0,
@@ -394,6 +413,7 @@ class Igus(Stage):
         # 6099h_02h Homing speeds Zero --> Speed at which it searches for zero
         # just take half the homing speed
         _homing_speed_zero_rpm = round(_homing_speed_rpm / 2.0)
+        # FIXME DM-45058 Add to wizardry.py
         byte19 = _homing_speed_zero_rpm & 0b11111111
         byte20 = _homing_speed_zero_rpm >> 8
         telegram = (
@@ -434,6 +454,7 @@ class Igus(Stage):
             * _multi_factor
         )
 
+        # FIXME DM-45058 Add to wizardry.py
         byte19 = _homing_accel_rpm & 0b11111111
         byte20 = (_homing_accel_rpm >> 8) & 0b11111111
         byte21 = _homing_accel_rpm >> 16
@@ -480,6 +501,7 @@ class Igus(Stage):
                 f"Value for given for feed constant of {self.config.motion_speed}"
                 f" exceeds limit of {(2 ** 16) / self.config.feed_constant * 60 * _multi_factor}"
             )
+        # FIXME DM-45058 Add to wizardry.py
         byte19 = _motion_speed_rpm & 0b11111111
         byte20 = _motion_speed_rpm >> 8
         telegram = (
@@ -516,6 +538,7 @@ class Igus(Stage):
         # Must be multiplied by 100 (_multi_factor)
         _motion_accel_rpm = round(self.config.motion_acceleration * _multi_factor)
 
+        # FIXME DM-45058 Add to wizardry.py
         byte19 = _motion_accel_rpm & 0b11111111
         byte20 = (_motion_accel_rpm >> 8) & 0b11111111
         byte21 = _motion_accel_rpm >> 16
@@ -551,13 +574,13 @@ class Igus(Stage):
 
     async def poll_until_result(
         self,
-        results,
-        cmd=telegrams_write["status_request"],
-        freq=2,
-        timeout=_STD_TIMEOUT,
-        byte19=None,
-        byte20=None,
-    ):
+        results: list[tuple],
+        cmd: tuple = telegrams_write["status_request"],
+        freq: int = 2,
+        timeout: float = _STD_TIMEOUT,
+        byte19: None | int = None,
+        byte20: None | int = None,
+    ) -> None:
         """Poll the controller and return when desired result is obtained
         or a timeout occurs.
 
@@ -592,13 +615,15 @@ class Igus(Stage):
         # Now poll for expectation
         self.log.debug("Starting to poll Controller.")
         start_time = time.time()
-        receipt = None
         attempts = 0
+        receipt: tuple | None = None
         while receipt not in results:
             # receipt = None
             receipt = await self.send_telegram(
                 cmd, timeout=timeout, return_response=True, check_handshake=False
             )
+            if receipt is None:
+                raise RuntimeError("Response not received.")
             self.log.debug(f"Polling received telegram of {receipt}")
 
             # The evaluation is probably best done using a for-loop
@@ -661,7 +686,7 @@ class Igus(Stage):
 
         self.log.debug("Received desired response!")
 
-    def time_to_target(self, target):
+    def time_to_target(self, target: float) -> float:
         """Estimate the time to reach a target based on distance, speed
         and acceleration parameters.
 
@@ -706,7 +731,7 @@ class Igus(Stage):
         self.log.info(f"Estimated time to target is {estimated_time:0.3f} seconds.")
         return estimated_time
 
-    async def move_absolute(self, value):
+    async def move_absolute(self, value: float) -> None:
         """This method moves the linear stage absolutely by the number of
         steps away from the zero (homed) position.
         i.e. value=10 would mean the stage would move 10 millimeters away from
@@ -727,7 +752,7 @@ class Igus(Stage):
         # the CSC limits the range based on configurations
         if value < 0 or value > self.config.maximum_stroke:
             raise ValueError(
-                f"Demanded position of {value} is not between zero and {self.maximum_stroke}"
+                f"Demanded position of {value} is not between zero and {self.config.maximum_stroke}"
             )
 
         # set the start signal bit to 0, so new positions can be demanded and
@@ -742,6 +767,7 @@ class Igus(Stage):
         # Uses command 607Ah (Target Position)
         # but must send a value multiplied by 100 to get precise movements
         _value = round(value * 100)
+        # FIXME DM-45058 add to wizardry.py
         byte19 = _value & 0b11111111
         byte20 = (_value >> 8) & 0b11111111
         byte21 = (_value >> 16) & 0b11111111
@@ -782,11 +808,12 @@ class Igus(Stage):
         movement_time = self.time_to_target(value)
         await self.send_telegram(telegrams_write["start_motion"])
         # Now poll until target is reached
+        # FIXME DM-45058 Add to wizardry.py
         await self.poll_until_result(
-            [telegrams_read["target_reached"]], timeout=movement_time + 5
+            [telegrams_read["target_reached"]], timeout=movement_time + 5.0
         )
 
-    async def move_relative(self, value):
+    async def move_relative(self, value: float) -> None:
         """This method moves the linear stage relative to the current position.
         The method basically wraps the absolute positioning code.
 
@@ -803,7 +830,7 @@ class Igus(Stage):
         target_position = self.position + value
         await self.move_absolute(target_position)
 
-    async def set_mode(self, mode):
+    async def set_mode(self, mode: str) -> None:
         """Sets the mode for the igus controller.
 
         Only two modes are currently supported, homing, and
@@ -879,7 +906,7 @@ class Igus(Stage):
         await self.poll_until_result([expected_result], cmd=telegrams_write["get_mode"])
         self.log.debug(f"Mode set to {mode}")
 
-    async def home(self):
+    async def home(self) -> None:
         """This method calls the homing method of the device which is used to
         establish a reference position.
 
@@ -922,7 +949,7 @@ class Igus(Stage):
         # set position profiling mode (1 on byte 19)
         await self.set_mode("position")
 
-    def check_reply(self, reply):
+    def check_reply(self, reply) -> typing.NoReturn:
         """This method checks the reply for any warnings or errors and
         acknowledgement or rejection of the command.
 
@@ -940,7 +967,7 @@ class Igus(Stage):
 
         raise NotImplementedError
 
-    async def get_position(self):
+    async def get_position(self) -> float:
         """This method returns the position of the linear stage.
         This is statusword 6064h mentioned in the manual.
 
@@ -959,6 +986,8 @@ class Igus(Stage):
         response_telegram = await self.send_telegram(
             telegrams_write["get_position"], check_handshake=False
         )
+        if response_telegram is None:
+            raise RuntimeError("No response received.")
 
         # response telegram returns it in bytes 19-22
         # is a factor of 100 inflated
@@ -971,7 +1000,7 @@ class Igus(Stage):
 
         return position
 
-    async def retrieve_status(self):
+    async def retrieve_status(self) -> tuple:
         """This method requests the status of the controller.
         This is statusword 6041h in the igus manual
 
@@ -982,25 +1011,27 @@ class Igus(Stage):
 
         Returns
         -------
-        response : `list`
+        response : `tuple`
             Returns list, as a tuple, returned from the controller.
         """
 
-        response = await self.send_telegram(
+        response: tuple | None = await self.send_telegram(
             telegrams_write["status_request"],
             check_handshake=False,
             return_response=True,
         )
+        if response is None:
+            raise RuntimeError("Response not received.")
         self.log.debug(f"Sent status request, received {response}")
         return response
 
-    async def update(self):
+    async def update(self) -> None:
         """Publish the telemetry of the stage."""
 
         self.position = await self.get_position()
         self.status = await self.retrieve_status()
 
-    def stop(self):
+    def stop(self) -> typing.NoReturn:
         """Stops the movement of the stage.
         This should never need to be used since movement commands do not
         return until completed"""
@@ -1008,7 +1039,7 @@ class Igus(Stage):
 
     async def send_telegram(
         self, cmd, return_response=True, check_handshake=False, timeout=_STD_TIMEOUT
-    ):
+    ) -> tuple | None:
         """Send a command to the TCP/IP controller and process its replies.
 
         Parameters
@@ -1021,7 +1052,7 @@ class Igus(Stage):
 
         return_response : `bool`
             Return a response?
-            FIXME: remove this functionality and always return a response
+            FIXME:DM-45058 remove this functionality and always return response
 
         check_handshake : `bool`
             Check that the expected handshake was received from controller
@@ -1040,6 +1071,9 @@ class Igus(Stage):
             else:
                 raise RuntimeError("Not connected and not trying to connect")
 
+        if self.writer is None or self.reader is None:
+            raise RuntimeError("Reader and/or writer are none.")
+
         async with self.cmd_lock:
             self.writer.write(bytearray(cmd))
             await self.writer.drain()
@@ -1051,7 +1085,7 @@ class Igus(Stage):
                     self.log.debug(f"Received response telegram of {list(line)}")
 
                 except Exception as e:
-                    if isinstance(e, asyncio.streams.IncompleteReadError):
+                    if isinstance(e, asyncio.IncompleteReadError):
                         err_msg = "TCP/IP controller exited"
                     else:
                         err_msg = "TCP/IP read failed"
@@ -1076,9 +1110,11 @@ class Igus(Stage):
 
                 if return_response:
                     return data
+            return None
 
     @classmethod
-    def get_config_schema(cls):
+    def get_config_schema(cls) -> dict:
+        """Get the device specific config schema."""
         return yaml.safe_load(
             """
             $schema: http://json-schema.org/draft-07/schema#

@@ -30,4 +30,6 @@ from .cli import *
 from .config_schema import *
 from .controllers import *
 from .csc import *
+from .enums import *
 from .mocks import *
+from .wizardry import *
