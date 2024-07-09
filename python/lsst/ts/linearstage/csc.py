@@ -26,12 +26,17 @@ import asyncio
 import types
 
 from lsst.ts import salobj, utils
-from lsst.ts.xml.enums import LinearStage
+from lsst.ts.xml.enums.LinearStage import DetailedState
+
+# FIXME DM-45169 Remove when XML 22 is released
+try:
+    from lsst.ts.xml.enums.LinearStage import ErrorCode
+except ImportError:
+    from .enums import ErrorCode
 from zaber_motion import Library, LogOutputMode
 
 from . import __version__, controllers
 from .config_schema import CONFIG_SCHEMA
-from .enums import ErrorCode
 
 Library.set_log_output(LogOutputMode.STDOUT)
 
@@ -129,11 +134,11 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         LinearStage.DetailedState
             The current sub state of the LinearStage.
         """
-        return LinearStage.DetailedState(self.evt_detailedState.data.detailedState)
+        return DetailedState(self.evt_detailedState.data.detailedState)
 
     async def report_detailed_state(self, new_sub_state):
         """Report the new sub state."""
-        new_sub_state = LinearStage.DetailedState(new_sub_state)
+        new_sub_state = DetailedState(new_sub_state)
         await self.evt_detailedState.set_write(detailedState=new_sub_state)
 
     def assert_referenced(self):
@@ -164,7 +169,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         salobj.ExpectedError
             Raised when the command is not allowed in the current state.
         """
-        if self.detailed_state == LinearStage.DetailedState.MOVINGSTATE:
+        if self.detailed_state == DetailedState.MOVINGSTATE:
             raise salobj.ExpectedError(
                 f"DetailedState is MOVINGSTATE, {action} not allowed in state {self.detailed_state}"
             )
@@ -226,9 +231,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             if not self.component.connected:
                 try:
                     await self.component.connect()
-                    await self.report_detailed_state(
-                        LinearStage.DetailedState.NOTMOVINGSTATE
-                    )
+                    await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
                 except RuntimeError as e:
                     err_msg = "Failed to establish connection to component"
                     await self.fault(
@@ -279,17 +282,17 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         """
         self.assert_enabled("getHome")
         self.assert_notmoving("getHome")
-        await self.report_detailed_state(LinearStage.DetailedState.MOVINGSTATE)
+        await self.report_detailed_state(DetailedState.MOVINGSTATE)
         try:
             await self.component.home()
         except Exception as e:
             # reset the detailed state
-            await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
+            await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
             err_msg = "Failed to home motor"
             await self.fault(code=ErrorCode.HOME, report=f"{err_msg}: {e}")
             raise e
         self.referenced = True
-        await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
+        await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
 
     async def do_moveAbsolute(self, data):
         """Move the stage using absolute position.
@@ -304,17 +307,17 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.assert_referenced()
         self.assert_target_in_range(data.distance, move_type="absolute")
 
-        await self.report_detailed_state(LinearStage.DetailedState.MOVINGSTATE)
+        await self.report_detailed_state(DetailedState.MOVINGSTATE)
         self.log.debug("Executing moveAbsolute")
         try:
             await self.component.move_absolute(data.distance)
         except Exception as e:
             err_msg = "Failed to perform absolute position movement"
-            await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
+            await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
             await self.fault(code=ErrorCode.MOVE_ABSOLUTE, report=f"{err_msg}: {e}")
             raise e
 
-        await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
+        await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
         self.log.debug("moveAbsolute complete")
 
     async def do_moveRelative(self, data):
@@ -328,15 +331,15 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.assert_enabled("moveRelative")
         self.assert_notmoving("moveRelative")
         self.assert_target_in_range(data.distance, move_type="relative")
-        await self.report_detailed_state(LinearStage.DetailedState.MOVINGSTATE)
+        await self.report_detailed_state(DetailedState.MOVINGSTATE)
         try:
             await self.component.move_relative(data.distance)
         except Exception as e:
             errmsg = "moveRelative command failed"
-            await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
+            await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
             await self.fault(code=ErrorCode.MOVE_RELATIVE, report=f"{errmsg}: {e}")
             raise e
-        await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
+        await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
 
     async def do_stop(self, data):
         """Stop the stage.
@@ -351,7 +354,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             await self.component.stop()
         except Exception as e:
             errmsg = "Stop failed"
-            await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
+            await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
             await self.fault(code=ErrorCode.STOP, report=f"{errmsg}: {e}")
             raise e
-        await self.report_detailed_state(LinearStage.DetailedState.NOTMOVINGSTATE)
+        await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
