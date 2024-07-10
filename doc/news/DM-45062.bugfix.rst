@@ -1,0 +1,1 @@
+Add XML 22 compatibility for ErrorCode enum being moved to ts_xml.

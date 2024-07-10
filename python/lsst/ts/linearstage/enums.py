@@ -3,7 +3,7 @@ __all__ = ["ErrorCode"]
 import enum
 
 
-# TODO DM-45062 Move into ts-xml enums.
+# TODO DM-45169 Remove when XML 22 is released.
 class ErrorCode(enum.IntEnum):
     """Error codes that indicate why the CSC went to fault state."""
 
