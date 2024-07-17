@@ -41,5 +41,6 @@ requirements:
         - ts-salobj
         - ts-idl
         - zaber-serial
-        - zaber-motion
+        - zaber-motion =5
         - ts-tcpip
+        - ts-simactuators
