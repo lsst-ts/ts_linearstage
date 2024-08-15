@@ -47,15 +47,12 @@ properties:
                 - ZaberV2
         stage_config:
             type: object
-        stage_name:
-            type: string
     required:
         - sal_index
         - target_position_minimum
         - target_position_maximum
         - stage_type
         - stage_config
-        - stage_name
     additionalProperties: false
 required:
     - instances

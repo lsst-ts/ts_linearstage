@@ -207,10 +207,13 @@ class ZaberV2(Stage):
                 type: number
             daisy_chain_address:
                 type: integer
+            stage_name:
+                type: string
         required:
             - hostname
             - port
             - daisy_chain_address
+            - stage_name
         additionalProperties: false
         """
         return yaml.safe_load(config_schema)
