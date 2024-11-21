@@ -29,8 +29,13 @@ import types
 import typing
 
 import yaml
+<<<<<<< Updated upstream
 from lsst.ts import salobj
 from lsst.ts.linearstage.mocks.mock_zaber_lst import LinearStageServer, MockSerial
+=======
+from lsst.ts.linearstage.mocks.mock_zaber_lst import MockSerial
+from lsst.ts import tcpip
+>>>>>>> Stashed changes
 from zaber import serial as zaber
 from zaber_motion import Units
 from zaber_motion.ascii import Axis, AxisType, Connection, Device
@@ -39,6 +44,167 @@ from zaber_motion.exceptions import CommandFailedException, ConnectionFailedExce
 from .stage import Stage
 
 _ZABER_MOVEMENT_TIME = 3  # time to wait for zaber to complete movement/homing
+
+class Commander:
+        """Implement communication with the electrometer.
+
+    Attributes
+    ----------
+    log : logging.Logger
+        The log for this class.
+    reader : asyncio.StreamReader
+        The reader for the tcpip stream.
+    writer : asyncio.StreamWriter
+        The writer for the tcpip stream.
+    reply_terminator : bytes
+        The reply termination character.
+    command_terminator : str
+        The command termination character.
+    lock : asyncio.Lock
+        The lock for protecting reading and writing handling.
+    host : str
+        The hostname or ip address for the electrometer.
+    port : int
+        The port of the electrometer.
+    timeout : int
+        The amount of time to wait until a message is not received.
+    connected : bool
+        Whether the electrometer is connected or not.
+    """
+
+    def __init__(self, log: None | logging.Logger = None) -> None:
+        # Create a logger if none were passed during the instantiation of
+        # the class
+        self.log: None | logging.Logger = None
+        if log is None:
+            self.log = logging.getLogger(type(self).__name__)
+        else:
+            self.log = log.getChild(type(self).__name__)
+
+        self.reader: None = None
+        self.writer: None = None
+        self.reply_terminator: bytes = b"\r"
+        self.command_terminator: str = "\r"
+        self.lock: asyncio.Lock = asyncio.Lock()
+        self.host: str = tcpip.LOCAL_HOST
+        self.port: int = 9999
+        self.timeout: int = 5
+        self.long_timeout: int = 30
+        self.connected: bool = False
+        self.moxa: bool = False
+
+    async def connect(self) -> None:
+        """Connect to the electrometer"""
+
+        if not self.simulation_mode:
+            if self.moxa:
+                async with self.lock:
+                try:
+                    connect_task = asyncio.open_connection(
+                        host=self.host, port=int(self.port), limit=1024 * 1024 * 10
+                    )
+                    self.reader, self.writer = await asyncio.wait_for(
+                        connect_task, timeout=self.long_timeout
+                    )
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Failed to connect. {self.host=} {self.port=}: {e!r}"
+                    )
+            else:
+                self.device = zaber.AsciiDevice(
+                    zaber.AsciiSerial(self.config.serial_port),
+                    self.config.daisy_chain_address,
+                )
+            self.connected = True
+
+        else:
+            main, reader = pty.openpty()
+            serial = zaber.AsciiSerial(os.ttyname(main))
+            serial._ser = MockSerial("")
+            self.device = zaber.AsciiDevice(serial, self.config.daisy_chain_address)
+
+        self.log.info("Connected")
+        
+    async def disconnect(self) -> None:
+        """Disconnect from the electrometer."""
+        if self.moxa:
+            async with self.lock:
+                if self.writer is None:
+                    return
+                try:
+                    await tcpip.close_stream_writer(self.writer)
+                except Exception:
+                    self.log.exception("Disconnect failed, continuing")
+                finally:
+                    self.device = None
+                    self.writer = None
+                    self.reader = None
+                    self.connected = False
+        else:
+            try:
+                self.device.port.close()
+                self.device = None
+                self.log.info("Disconnected from stage")
+            except Exception:
+                self.log.exception("Disconnect failed, continuing")
+            finally:
+                self.device = None
+                self.write = None
+                self.reader = None
+                self.connected = False
+
+    async def send_command(
+        self, msg: str, has_reply: bool = False, timeout: typing.Optional[int] = None
+    ) -> str:
+        """Send a command to the electrometer and read reply if has one.
+
+        Parameters
+        ----------
+        msg : `str`
+            The message to send.
+        has_reply : `bool`
+            Does the command expect a reply.
+
+        Returns
+        -------
+        reply
+        """
+        if timeout is None:
+            self.log.debug(f"Will use timeout {self.timeout}s")
+        else:
+            self.log.debug(f"Will use timeout {timeout}s")
+
+        if self.moxa:
+            async with self.lock:
+                msg = f'/{self.config.daisy_chain_address}' + msg + self.command_terminator
+                msg = msg.encode("ascii")
+                if self.writer is not None:
+                    self.log.debug(f"Commanding using: {msg}")
+                    self.writer.write(msg)
+                    await self.writer.drain()
+                    if has_reply:
+                        reply = await asyncio.wait_for(
+                            self.reader.readuntil(self.reply_terminator),
+                            timeout=self.timeout if timeout is None else timeout,
+                        )
+                        self.log.debug(f"reply={reply}")
+                        reply = reply.decode("ascii").strip()
+                        return reply
+                    return None
+                else:
+                    raise RuntimeError("CSC not connected.")
+        else: 
+            try:
+                reply = self.device.send(
+                    "move abs {}".format(int(value * self.config.steps_per_mm))
+                )
+                self.log.info(reply)
+                status_dictionary = self.check_reply(reply)
+                if status_dictionary is False:
+                    raise Exception("Command rejected")
+            except zaber.TimeoutError:
+                self.log.exception("Response timed out")
+
 
 
 class ZaberV2(Stage):
@@ -285,6 +451,7 @@ class Zaber(Stage):
         self.address = 1
         self.position = None
         self.status = None
+
         self.reply_flags = {
             "BADDATA": "improperly formatted or invalid data",
             "AGAIN": "The command cannot be processed right now. "
@@ -347,21 +514,14 @@ class Zaber(Stage):
 
     async def connect(self):
         """Connect to the Stage."""
-        if not self.simulation_mode:
-            self.commander = zaber.AsciiDevice(
-                zaber.AsciiSerial(self.config.serial_port),
-                self.config.daisy_chain_address,
-            )
-        else:
-            main, reader = pty.openpty()
-            serial = zaber.AsciiSerial(os.ttyname(main))
-            serial._ser = MockSerial("")
-            self.commander = zaber.AsciiDevice(serial, self.config.daisy_chain_address)
+        self.commander = Commander()
+        self.commander.connect()
+
         self.log.info("Connected")
 
     async def disconnect(self):
         """Disconnect from the stage."""
-        self.commander.port.close()
+        self.commander.disconnect()
         self.commander = None
         self.log.info("Disconnected from stage")
 
@@ -408,6 +568,7 @@ class Zaber(Stage):
             Raised when the serial port times out.
 
         """
+        cmd = f'move abs {int(value * self.config.steps_per_mm)}'
 
         try:
             reply = self.commander.send(
@@ -448,6 +609,8 @@ class Zaber(Stage):
         zabar.TimeoutError
             Raised when serial port times out.
         """
+        cmd = f'move rel {int(value * self.config.steps_per_mm)}'
+
         try:
             self.log.debug("move rel {}".format(int(value * self.config.steps_per_mm)))
             reply = self.commander.send(
@@ -477,6 +640,8 @@ class Zaber(Stage):
         codes.
         If the command finishes successfully then the SAL code is logged.
         """
+        cmd = 'home'
+
         cmd = zaber.AsciiCommand("{} home".format(self.config.daisy_chain_address))
         try:
             reply = self.commander.send(cmd)
@@ -545,6 +710,7 @@ class Zaber(Stage):
         float
             The position of the stage.
         """
+        cmd = 'get pos'
         try:
             reply = self.commander.send("get pos")
             self.log.info(reply)
