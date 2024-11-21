@@ -28,10 +28,3 @@ Documentation
 - Added missing docstrings and updated out-of-date docstrings (`DM-42420 <https://rubinobs.atlassian.net//browse/DM-42420>`_)
 - Added towncrier. (`DM-42420 <https://rubinobs.atlassian.net//browse/DM-42420>`_)
 
-v2.1.0 (2024-11-20)
-==================
-
-New Features
------------
-- Added `stage_name` to the configuration of zaber_lst (ZaberV2) `stage_config`
-
