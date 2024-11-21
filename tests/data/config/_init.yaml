@@ -34,3 +34,5 @@ instances:
       hostname: 127.0.0.1
       port: 9000
       daisy_chain_address: 1
+      stage_name: simulation
+

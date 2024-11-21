@@ -10,3 +10,4 @@ instances:
       serial_port: /dev/ttyLinearStage1
       steps_per_mm: 8000
       daisy_chain_address: 1
+
