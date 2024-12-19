@@ -285,6 +285,7 @@ class ZaberV2(Stage):
         if self.simulation_mode:
             self.mock_server = LinearStageServer(port=0, log=self.log)
             await self.mock_server.start_task
+            self.config.host = self.mock_server.host
             self.config.port = self.mock_server.port
         try:
             self.client = await Connection.open_tcp_async(

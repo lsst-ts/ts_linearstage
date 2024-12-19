@@ -1,0 +1,1 @@
+Made sure that host is set properly when in simulation mode.
