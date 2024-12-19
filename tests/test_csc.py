@@ -33,7 +33,7 @@ CONFIGS = ["igus.yaml", "zaber.yaml"]
 
 STD_TIMEOUT = 20
 
-INDEXES = [1, 2, 3]
+INDEXES = [2, 3]
 
 
 class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):

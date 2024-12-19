@@ -29,13 +29,8 @@ import types
 import typing
 
 import yaml
-<<<<<<< Updated upstream
-from lsst.ts import salobj
+from lsst.ts import salobj, tcpip
 from lsst.ts.linearstage.mocks.mock_zaber_lst import LinearStageServer, MockSerial
-=======
-from lsst.ts.linearstage.mocks.mock_zaber_lst import MockSerial
-from lsst.ts import tcpip
->>>>>>> Stashed changes
 from zaber import serial as zaber
 from zaber_motion import Units
 from zaber_motion.ascii import Axis, AxisType, Connection, Device
@@ -45,8 +40,9 @@ from .stage import Stage
 
 _ZABER_MOVEMENT_TIME = 3  # time to wait for zaber to complete movement/homing
 
+
 class Commander:
-        """Implement communication with the electrometer.
+    """Implement communication with the electrometer.
 
     Attributes
     ----------
@@ -99,17 +95,17 @@ class Commander:
         if not self.simulation_mode:
             if self.moxa:
                 async with self.lock:
-                try:
-                    connect_task = asyncio.open_connection(
-                        host=self.host, port=int(self.port), limit=1024 * 1024 * 10
-                    )
-                    self.reader, self.writer = await asyncio.wait_for(
-                        connect_task, timeout=self.long_timeout
-                    )
-                except Exception as e:
-                    raise RuntimeError(
-                        f"Failed to connect. {self.host=} {self.port=}: {e!r}"
-                    )
+                    try:
+                        connect_task = asyncio.open_connection(
+                            host=self.host, port=int(self.port), limit=1024 * 1024 * 10
+                        )
+                        self.reader, self.writer = await asyncio.wait_for(
+                            connect_task, timeout=self.long_timeout
+                        )
+                    except Exception as e:
+                        raise RuntimeError(
+                            f"Failed to connect. {self.host=} {self.port=}: {e!r}"
+                        )
             else:
                 self.device = zaber.AsciiDevice(
                     zaber.AsciiSerial(self.config.serial_port),
@@ -124,7 +120,7 @@ class Commander:
             self.device = zaber.AsciiDevice(serial, self.config.daisy_chain_address)
 
         self.log.info("Connected")
-        
+
     async def disconnect(self) -> None:
         """Disconnect from the electrometer."""
         if self.moxa:
@@ -153,7 +149,7 @@ class Commander:
                 self.reader = None
                 self.connected = False
 
-    async def send_command(
+    async def send(
         self, msg: str, has_reply: bool = False, timeout: typing.Optional[int] = None
     ) -> str:
         """Send a command to the electrometer and read reply if has one.
@@ -176,7 +172,11 @@ class Commander:
 
         if self.moxa:
             async with self.lock:
-                msg = f'/{self.config.daisy_chain_address}' + msg + self.command_terminator
+                msg = (
+                    f"/{self.config.daisy_chain_address}"
+                    + msg
+                    + self.command_terminator
+                )
                 msg = msg.encode("ascii")
                 if self.writer is not None:
                     self.log.debug(f"Commanding using: {msg}")
@@ -193,10 +193,10 @@ class Commander:
                     return None
                 else:
                     raise RuntimeError("CSC not connected.")
-        else: 
+        else:
             try:
                 reply = self.device.send(
-                    "move abs {}".format(int(value * self.config.steps_per_mm))
+                    "move abs {}".format(int(msg * self.config.steps_per_mm))
                 )
                 self.log.info(reply)
                 status_dictionary = self.check_reply(reply)
@@ -204,7 +204,6 @@ class Commander:
                     raise Exception("Command rejected")
             except zaber.TimeoutError:
                 self.log.exception("Response timed out")
-
 
 
 class ZaberV2(Stage):
@@ -568,7 +567,7 @@ class Zaber(Stage):
             Raised when the serial port times out.
 
         """
-        cmd = f'move abs {int(value * self.config.steps_per_mm)}'
+        f"move abs {int(value * self.config.steps_per_mm)}"
 
         try:
             reply = self.commander.send(
@@ -609,7 +608,7 @@ class Zaber(Stage):
         zabar.TimeoutError
             Raised when serial port times out.
         """
-        cmd = f'move rel {int(value * self.config.steps_per_mm)}'
+        f"move rel {int(value * self.config.steps_per_mm)}"
 
         try:
             self.log.debug("move rel {}".format(int(value * self.config.steps_per_mm)))
@@ -640,7 +639,7 @@ class Zaber(Stage):
         codes.
         If the command finishes successfully then the SAL code is logged.
         """
-        cmd = 'home'
+        cmd = "home"
 
         cmd = zaber.AsciiCommand("{} home".format(self.config.daisy_chain_address))
         try:
@@ -710,7 +709,7 @@ class Zaber(Stage):
         float
             The position of the stage.
         """
-        cmd = 'get pos'
+        "get pos"
         try:
             reply = self.commander.send("get pos")
             self.log.info(reply)
