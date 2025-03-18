@@ -19,6 +19,7 @@ where = [ "python" ]
 
 [project.scripts]
 run_linearstage = "lsst.ts.linearstage:execute_csc"
+command_linearstage = "lsst.ts.linearstage:command_csc"
 
 [tool.setuptools_scm]
 write_to = "python/lsst/ts/linearstage/version.py"

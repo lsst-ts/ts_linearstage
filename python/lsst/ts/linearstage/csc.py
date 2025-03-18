@@ -174,7 +174,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                 f"DetailedState is MOVINGSTATE, {action} not allowed in state {self.detailed_state}"
             )
 
-    def assert_target_in_range(self, target_value, move_type):
+    def assert_target_in_range(self, target_value, move_type, axis):
         """Is the target out of range?
 
         Parameters
@@ -190,7 +190,15 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             Raised when the command is not allowed in the current state.
         """
         if move_type == "relative":
-            target_value = target_value + self.component.position
+            if (
+                self.salinfo.component_info.topics["tel_position"]
+                .fields["position"]
+                .count
+                == 1
+            ):
+                target_value = target_value + self.component.position[0]
+            else:
+                target_value = target_value + self.component.position[axis]
 
         if (target_value > self.target_position_maximum) or (
             target_value < self.target_position_minimum
@@ -209,7 +217,17 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         while True:
             try:
                 await self.component.update()
-                await self.tel_position.set_write(position=self.component.position)
+                if (
+                    self.salinfo.component_info.topics["tel_position"]
+                    .fields["position"]
+                    .count
+                    == 1
+                ):
+                    await self.tel_position.set_write(
+                        position=self.component.position[0]
+                    )
+                else:
+                    await self.tel_position.set_write(position=self.component.position)
             except Exception as e:
                 errmsg = "Telemetry loop failed."
                 self.log.exception(errmsg)
@@ -305,20 +323,20 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.assert_enabled("moveAbsolute")
         self.assert_notmoving("moveAbsolute")
         self.assert_referenced()
-        self.assert_target_in_range(data.distance, move_type="absolute")
+        self.assert_target_in_range(data.distance, move_type="absolute", axis=data.axis)
 
         await self.report_detailed_state(DetailedState.MOVINGSTATE)
         self.log.debug("Executing moveAbsolute")
         try:
-            await self.component.move_absolute(data.distance)
+            await self.component.move_absolute(data.distance, data.axis)
         except Exception as e:
             err_msg = "Failed to perform absolute position movement"
             await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
             await self.fault(code=ErrorCode.MOVE_ABSOLUTE, report=f"{err_msg}: {e}")
             raise e
-
-        await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
-        self.log.debug("moveAbsolute complete")
+        finally:
+            await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
+            self.log.debug("moveAbsolute complete")
 
     async def do_moveRelative(self, data):
         """Move the stage using relative position
@@ -330,16 +348,17 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         """
         self.assert_enabled("moveRelative")
         self.assert_notmoving("moveRelative")
-        self.assert_target_in_range(data.distance, move_type="relative")
+        self.assert_target_in_range(data.distance, move_type="relative", axis=data.axis)
         await self.report_detailed_state(DetailedState.MOVINGSTATE)
         try:
-            await self.component.move_relative(data.distance)
+            await self.component.move_relative(data.distance, data.axis)
         except Exception as e:
             errmsg = "moveRelative command failed"
             await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
             await self.fault(code=ErrorCode.MOVE_RELATIVE, report=f"{errmsg}: {e}")
             raise e
-        await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
+        finally:
+            await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
 
     async def do_stop(self, data):
         """Stop the stage.
@@ -351,7 +370,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         """
         self.assert_enabled("stop")
         try:
-            await self.component.stop()
+            await self.component.stop(data.axis)
         except Exception as e:
             errmsg = "Stop failed"
             await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
