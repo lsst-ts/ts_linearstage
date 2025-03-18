@@ -127,6 +127,9 @@ class MockLSTV2:
                 id=wizardry.AXIS_ID,
                 resolution=wizardry.AXIS_RESOLUTION,
                 modified=False,
+                position=simactuators.PointToPointActuator(
+                    min_position=0, max_position=1000000, speed=60000
+                ),
             ),
             axis2=types.SimpleNamespace(
                 address=2, id=0, resolution="NA", modified=False
@@ -231,7 +234,7 @@ class MockLSTV2:
             case "get.settings.max":
                 return response + "0"
             case "pos":
-                return response + f"{self.position.position()}"
+                return response + f"{axis.position.position()}"
             case _:
                 raise NotImplementedError(f"{field} not implemented")
 
@@ -304,20 +307,21 @@ class MockLSTV2:
         sub_command = kwargs["sub_command"]
         device_address = int(kwargs["device_id"])
         axis_address = int(kwargs["axis_id"])
+        axis = getattr(self.axes, f"axis{axis_address}")
         response = (
             f"@{device_address:02} {axis_address} {self.message_id:02} OK IDLE -- "
         )
 
         def do_rel():
             """Perform the move rel command."""
-            target = self.position.position() + float(kwargs["parameters"])
-            self.position.set_position(position=target)
+            target = axis.position.position() + float(kwargs["parameters"])
+            axis.position.set_position(position=target)
             return response + "0"
 
         def do_abs():
             """Perform the move abs command."""
             target = float(kwargs["parameters"])
-            self.position.set_position(position=target)
+            axis.position.set_position(position=target)
             return response + "0"
 
         match sub_command:

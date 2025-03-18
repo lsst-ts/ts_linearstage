@@ -19,12 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import asyncio
 import pathlib
 import unittest
 
 import pytest
 from lsst.ts import linearstage, salobj
-from lsst.ts.idl.enums.LinearStage import DetailedState
+from lsst.ts.xml.enums.LinearStage import DetailedState
 from parameterized import parameterized
 
 TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
@@ -97,9 +98,25 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                 topic=self.remote.tel_position, flush=True
             )
             if self.csc.salinfo.index == 2:
-                assert position_topic.position == pytest.approx(1.2)
+                if (
+                    self.csc.salinfo.component_info.topics["tel_position"]
+                    .fields["position"]
+                    .count
+                    == 1
+                ):
+                    assert position_topic.position == pytest.approx(1.2)
+                else:
+                    assert position_topic.position == pytest.approx([1.2])
             else:
-                assert position_topic.position == pytest.approx(0)
+                if (
+                    self.csc.salinfo.component_info.topics["tel_position"]
+                    .fields["position"]
+                    .count
+                    == 1
+                ):
+                    assert position_topic.position == pytest.approx(0)
+                else:
+                    assert position_topic.position == pytest.approx([0])
 
     @parameterized.expand(INDEXES)
     async def test_getHome(self, index):
@@ -142,10 +159,19 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                 topic=self.remote.evt_detailedState,
                 detailedState=DetailedState.NOTMOVINGSTATE,
             )
+            await asyncio.sleep(10)
             position = await self.assert_next_sample(
                 topic=self.remote.tel_position, flush=True
             )
-            assert position.position == pytest.approx(10, rel=1.5e-6)
+            if (
+                self.csc.salinfo.component_info.topics["tel_position"]
+                .fields["position"]
+                .count
+                == 1
+            ):
+                assert position.position == pytest.approx(10, rel=1.5e-6)
+            else:
+                assert position.position == pytest.approx([10], rel=1.5e-6)
 
     @parameterized.expand(INDEXES)
     async def test_moveRelative(self, index):
@@ -161,29 +187,63 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                 distance=10, timeout=STD_TIMEOUT
             )
             if self.csc.salinfo.index == 1 or self.csc.salinfo.index == 3:
+                await asyncio.sleep(10)
                 position = await self.assert_next_sample(
                     topic=self.remote.tel_position, flush=True
                 )
-                assert position.position == pytest.approx(10, rel=1.2e-6)
+                if (
+                    self.csc.salinfo.component_info.topics["tel_position"]
+                    .fields["position"]
+                    .count
+                    == 1
+                ):
+                    assert position.position == pytest.approx(10, rel=1.2e-6)
+                else:
+                    assert position.position == pytest.approx([10], rel=1.2e-6)
             else:
                 # Igus behaves weirdly with this method but no idea
                 # what
                 # behavior should be. So just going to handle this
                 # specially.
-                posit = await self.remote.tel_position.next(
-                    flush=True, timeout=STD_TIMEOUT
+                posit = await self.assert_next_sample(
+                    topic=self.remote.tel_position, flush=True
                 )
-                assert posit.position == pytest.approx(11.2, abs=0.05)
+                if (
+                    self.csc.salinfo.component_info.topics["tel_position"]
+                    .fields["position"]
+                    .count
+                    == 1
+                ):
+                    assert posit.position == pytest.approx(11.2, abs=0.05)
+                else:
+                    assert posit.position == pytest.approx([11.2], abs=0.05)
             await self.remote.cmd_moveRelative.set_start(
                 distance=10, timeout=STD_TIMEOUT
             )
             if self.csc.salinfo.index == 1 or self.csc.salinfo.index == 3:
+                await asyncio.sleep(10)
                 position = await self.assert_next_sample(
                     topic=self.remote.tel_position, flush=True
                 )
-                assert position.position == pytest.approx(20, rel=1.2e-6)
+                if (
+                    self.csc.salinfo.component_info.topics["tel_position"]
+                    .fields["position"]
+                    .count
+                    == 1
+                ):
+                    assert position.position == pytest.approx(20, rel=1.2e-6)
+                else:
+                    assert position.position == pytest.approx([20], rel=1.2e-6)
             else:
-                posit = await self.remote.tel_position.next(
-                    flush=True, timeout=STD_TIMEOUT
+                posit = await self.assert_next_sample(
+                    topic=self.remote.tel_position, flush=True
                 )
-                assert posit.position == pytest.approx(21.2, abs=0.05)
+                if (
+                    self.csc.salinfo.component_info.topics["tel_position"]
+                    .fields["position"]
+                    .count
+                    == 1
+                ):
+                    assert posit.position == pytest.approx(21.2, abs=0.05)
+                else:
+                    assert posit.position == pytest.approx([21.2], abs=0.05)

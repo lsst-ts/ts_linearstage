@@ -20,9 +20,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-__all__ = ["execute_csc"]
+__all__ = ["execute_csc", "command_csc"]
 
 import asyncio
+
+from lsst.ts import salobj
 
 from .csc import LinearStageCSC
 
@@ -30,3 +32,7 @@ from .csc import LinearStageCSC
 def execute_csc():
     """Execute the CSC."""
     asyncio.run(LinearStageCSC.amain(index=True))
+
+
+def command_csc():
+    asyncio.run(salobj.CscCommander.amain(index=True, name="LinearStage"))

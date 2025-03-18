@@ -1,0 +1,5 @@
+#!/usr/bin/env python
+
+from lsst.ts.linearstage.cli import command_csc
+
+command_csc()
