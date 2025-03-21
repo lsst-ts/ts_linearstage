@@ -97,7 +97,7 @@ class Igus(Stage):
         self.writer: asyncio.StreamWriter | None = None
         self.cmd_lock: asyncio.Lock = asyncio.Lock()
         self.connection_timeout: int = 5
-        self.position: float = 0.0
+        self.position: list[float] = [0.0]
         self.status: tuple = tuple()
         self.mode_num: int = 0
 
@@ -702,7 +702,7 @@ class Igus(Stage):
             The estimated number of seconds to reach the target.
 
         """
-        dist_to_target = np.abs(target - self.position)
+        dist_to_target = np.abs(target - self.position[0])
 
         # Calculate Distance to get to maximum speed
         dist_to_max_v = self.config.motion_speed**2 / (
@@ -731,7 +731,7 @@ class Igus(Stage):
         self.log.info(f"Estimated time to target is {estimated_time:0.3f} seconds.")
         return estimated_time
 
-    async def move_absolute(self, value: float) -> None:
+    async def move_absolute(self, value: float, axis) -> None:
         """This method moves the linear stage absolutely by the number of
         steps away from the zero (homed) position.
         i.e. value=10 would mean the stage would move 10 millimeters away from
@@ -741,6 +741,8 @@ class Igus(Stage):
         ----------
         value : `float`
             The number of millimeters to move the stage.
+        axis : `Axis`
+            The axis to perform the command.
 
         Returns
         -------
@@ -813,7 +815,7 @@ class Igus(Stage):
             [telegrams_read["target_reached"]], timeout=movement_time + 5.0
         )
 
-    async def move_relative(self, value: float) -> None:
+    async def move_relative(self, value: float, axis) -> None:
         """This method moves the linear stage relative to the current position.
         The method basically wraps the absolute positioning code.
 
@@ -827,8 +829,8 @@ class Igus(Stage):
 
         """
 
-        target_position = self.position + value
-        await self.move_absolute(target_position)
+        target_position = self.position[0] + value
+        await self.move_absolute(target_position, axis)
 
     async def set_mode(self, mode: str) -> None:
         """Sets the mode for the igus controller.
@@ -1028,7 +1030,7 @@ class Igus(Stage):
     async def update(self) -> None:
         """Publish the telemetry of the stage."""
 
-        self.position = await self.get_position()
+        self.position[0] = await self.get_position()
         self.status = await self.retrieve_status()
 
     def stop(self) -> typing.NoReturn:

@@ -23,6 +23,7 @@ __all__ = ["Zaber", "ZaberV2"]
 
 import asyncio
 import logging
+import math
 import os
 import pty
 import types
@@ -235,7 +236,7 @@ class ZaberV2(Stage):
         super().__init__(config, log, simulation_mode)
         self.client: Connection | None = None
         self.mock_server: LinearStageServer | None = None
-        self.position: float | None = None
+        self.position: list[float] = []
         self.device: Device | None = None
         self.axes: list[Axis] = []
 
@@ -253,13 +254,15 @@ class ZaberV2(Stage):
     def referenced(self):
         return self.device.all_axes.is_homed()
 
-    async def _perform(self, command_name: str, **kwargs: typing.Any):
+    async def _perform(self, command_name: str, axis: Axis, **kwargs: typing.Any):
         """Send a command to the axis.
 
         Parameters
         ----------
         command_name : `str`
             Name of the method to call.
+        axis : `Axis`
+            The axis to perform the command.
         kwargs : `typing.Any`
             kwargs for the command.
 
@@ -272,13 +275,12 @@ class ZaberV2(Stage):
         """
         if self.device is None:
             raise RuntimeError("Device has not been received.")
-        for axis in self.axes:
-            try:
-                command = getattr(axis, command_name)
-                return await command(**kwargs)
-            except CommandFailedException:
-                self.log.exception(f"{command} rejected for {axis=}.")
-                raise
+        try:
+            command = getattr(axis, command_name)
+            return await command(**kwargs)
+        except CommandFailedException:
+            self.log.exception(f"{command_name=} rejected for {axis=}.")
+            raise
 
     async def connect(self) -> None:
         """Connect to the device."""
@@ -312,48 +314,66 @@ class ZaberV2(Stage):
                 await self.mock_server.close()
             self.mock_server = None
 
-    async def move_relative(self, value: float) -> None:
+    async def move_relative(self, value: float, axis: Axis) -> None:
         """Move device to position with relative target.
 
         Parameters
         ----------
         value : `float`
             The amount to move by.
+        axis : `Axis`
+            The axis to perform the command.
         """
+        axis: Axis = self.axes[axis]
         await self._perform(
-            "move_relative_async", position=value, unit=Units.LENGTH_MILLIMETRES
+            "move_relative_async",
+            axis=axis,
+            position=value,
+            unit=Units.LENGTH_MILLIMETRES,
         )
 
-    async def move_absolute(self, value: float) -> None:
+    async def move_absolute(self, value: float, axis: Axis) -> None:
         """Move the device to value.
 
         Parameters
         ----------
         value : `float`
             The position to move to.
+        axis : `Axis`
+            The axis to perform the command.
         """
+        axis: Axis = self.axes[axis]
         await self._perform(
-            "move_absolute_async", position=value, unit=Units.LENGTH_MILLIMETRES
+            "move_absolute_async",
+            axis=axis,
+            position=value,
+            unit=Units.LENGTH_MILLIMETRES,
         )
 
     async def home(self) -> None:
         """Home the device, needed to gain awareness of position."""
-        await self._perform("home_async")
+        for axis in self.axes:
+            await self._perform("home_async", axis=axis)
 
     async def enable_motor(self) -> None:
         """Enable the motor to move, not supported by every model."""
-        await self._perform("driver_enable_async")
+        for axis in self.axes:
+            await self._perform("driver_enable_async", axis=axis)
 
     async def disable_motor(self) -> None:
         """Disable the motor from moving, not supported on every model."""
-        await self._perform("driver_disable_async")
+        for axis in self.axes:
+            await self._perform("driver_disable_async", axis=axis)
 
     async def update(self) -> None:
         """Get update of position from device."""
-        position = await self._perform(
-            "get_position_async", unit=Units.LENGTH_MILLIMETRES
-        )
-        self.position = position
+        self.position = [math.nan] * len(self.axes)
+        for idx, axis in enumerate(self.axes):
+            self.log.debug(f"{idx=}, {axis=}")
+            position = await self._perform(
+                "get_position_async", axis=axis, unit=Units.LENGTH_MILLIMETRES
+            )
+            self.position[idx] = position
 
     @classmethod
     def get_config_schema(cls) -> dict:
