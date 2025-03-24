@@ -1,3 +1,12 @@
+v2.2.0 (2025-03-24)
+===================
+
+New Features
+------------
+
+- Added axis parameter support to telemetry topic and commands. (`DM-48609 <https://rubinobs.atlassian.net//browse/DM-48609>`_)
+
+
 v2.1.0 (2024-11-20)
 ==================
 
