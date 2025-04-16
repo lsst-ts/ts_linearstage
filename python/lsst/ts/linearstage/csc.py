@@ -234,6 +234,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                 errmsg = "Telemetry loop failed."
                 self.log.exception(errmsg)
                 await self.fault(code=ErrorCode.TELEMETRY, report=f"{errmsg}: {e}")
+                return
             await asyncio.sleep(self.heartbeat_interval)
 
     async def handle_summary_state(self):
@@ -257,7 +258,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                     await self.fault(
                         code=ErrorCode.CONNECTION_FAILED, report=f"{err_msg}: {e}"
                     )
-                    raise e
+                    return
 
             if self.telemetry_task.done():
                 self.telemetry_task = asyncio.create_task(self.telemetry())
