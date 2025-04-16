@@ -295,9 +295,8 @@ class ZaberV2(Stage):
         except ConnectionFailedException:
             self.log.exception("Failed to connect to host/port.")
             raise RuntimeError(f"Unable to connect to host {self.config.hostname}.")
-        self.device = self.client.get_device(self.config.daisy_chain_address)
-        self.log.debug(f"{self.device=}")
-        await self.device.identify_async()
+        devices = await self.client.detect_devices_async()
+        self.device = devices[self.config.daisy_chain_address]
         self.log.debug(f"{self.device=}")
         self._check_axes()
         await self.update()
@@ -305,7 +304,7 @@ class ZaberV2(Stage):
     async def disconnect(self) -> None:
         """Disconnect from the device."""
         if self.client is not None:
-            self.client.close()
+            await self.client.close_async()
         self.device = None
         self.axes = []
         self.client = None
@@ -325,12 +324,23 @@ class ZaberV2(Stage):
             The axis to perform the command.
         """
         axis: Axis = self.axes[axis]
-        await self._perform(
-            "move_relative_async",
-            axis=axis,
-            position=value,
-            unit=Units.LENGTH_MILLIMETRES,
-        )
+        match axis.axis_type:
+            case AxisType.LINEAR:
+                await self._perform(
+                    "move_relative_async",
+                    axis=axis,
+                    position=value,
+                    unit=Units.LENGTH_MILLIMETRES,
+                )
+            case AxisType.ROTARY:
+                await self._perform(
+                    "move_relative_absolute",
+                    axis=axis,
+                    position=value,
+                    units=Units.ANGLE_DEGREES,
+                )
+            case _:
+                raise RuntimeError(f"{axis.axis_type} is not supported.")
 
     async def move_absolute(self, value: float, axis: Axis) -> None:
         """Move the device to value.
@@ -343,12 +353,23 @@ class ZaberV2(Stage):
             The axis to perform the command.
         """
         axis: Axis = self.axes[axis]
-        await self._perform(
-            "move_absolute_async",
-            axis=axis,
-            position=value,
-            unit=Units.LENGTH_MILLIMETRES,
-        )
+        match axis.axis_type:
+            case AxisType.LINEAR:
+                await self._perform(
+                    "move_absolute_async",
+                    axis=axis,
+                    position=value,
+                    unit=Units.LENGTH_MILLIMETRES,
+                )
+            case AxisType.ROTARY:
+                await self._perform(
+                    "move_absolute_async",
+                    axis=axis,
+                    position=value,
+                    unit=Units.ANGLE_DEGREES,
+                )
+            case _:
+                raise RuntimeError(f"{axis.axis_type} is not supported.")
 
     async def home(self) -> None:
         """Home the device, needed to gain awareness of position."""
@@ -370,9 +391,17 @@ class ZaberV2(Stage):
         self.position = [math.nan] * len(self.axes)
         for idx, axis in enumerate(self.axes):
             self.log.debug(f"{idx=}, {axis=}")
-            position = await self._perform(
-                "get_position_async", axis=axis, unit=Units.LENGTH_MILLIMETRES
-            )
+            match axis.axis_type:
+                case AxisType.LINEAR:
+                    position = await self._perform(
+                        "get_position_async", axis=axis, unit=Units.LENGTH_MILLIMETRES
+                    )
+                case AxisType.ROTARY:
+                    position = await self._perform(
+                        "get_position_async", axis=axis, unit=Units.ANGLE_DEGREES
+                    )
+                case _:
+                    raise RuntimeError(f"{axis.axis_type} is not supported.")
             self.position[idx] = position
 
     @classmethod

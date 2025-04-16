@@ -29,7 +29,7 @@ import types
 
 import serial
 from lsst.ts import simactuators, tcpip
-from zaber_motion.ascii import WarningFlags
+from zaber_motion.ascii import Device, WarningFlags
 
 from .. import wizardry
 
@@ -58,7 +58,7 @@ class LinearStageServer(tcpip.OneClientReadLoopServer):
             name="Zaber Mock Server",
             terminator=b"\n",
         )
-        self.device: MockLSTV2 = MockLSTV2()
+        self.device: Device = Device(device_address=1)
 
     async def read_and_dispatch(self) -> None:
         """Read from the client and send a reply."""
