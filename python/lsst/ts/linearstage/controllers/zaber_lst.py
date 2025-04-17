@@ -35,8 +35,13 @@ from lsst.ts.linearstage.mocks.mock_zaber_lst import LinearStageServer, MockSeri
 from zaber import serial as zaber
 from zaber_motion import Units
 from zaber_motion.ascii import Axis, AxisType, Connection, Device
-from zaber_motion.exceptions import CommandFailedException, ConnectionFailedException
+from zaber_motion.exceptions import (
+    CommandFailedException,
+    ConnectionFailedException,
+    RequestTimeoutException,
+)
 
+from ..wizardry import MAX_RETRIES
 from .stage import Stage
 
 _ZABER_MOVEMENT_TIME = 3  # time to wait for zaber to complete movement/homing
@@ -275,12 +280,19 @@ class ZaberV2(Stage):
         """
         if self.device is None:
             raise RuntimeError("Device has not been received.")
-        try:
-            command = getattr(axis, command_name)
-            return await command(**kwargs)
-        except CommandFailedException:
-            self.log.exception(f"{command_name=} rejected for {axis=}.")
-            raise
+        number_of_retries = 0
+        while number_of_retries <= MAX_RETRIES:
+            try:
+                self.log.info(f"Number {number_of_retries} of {MAX_RETRIES}")
+                command = getattr(axis, command_name)
+                return await command(**kwargs)
+            except CommandFailedException:
+                self.log.exception(f"{command_name=} rejected for {axis=}.")
+                raise
+            except RequestTimeoutException:
+                self.log.exception(f"{command_name} timed out.")
+                number_of_retries += 1
+                await asyncio.sleep(5)
 
     async def connect(self) -> None:
         """Connect to the device."""
