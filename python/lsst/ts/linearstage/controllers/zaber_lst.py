@@ -35,7 +35,11 @@ from lsst.ts.linearstage.mocks.mock_zaber_lst import LinearStageServer, MockSeri
 from zaber import serial as zaber
 from zaber_motion import Units
 from zaber_motion.ascii import Axis, AxisType, Connection, Device
-from zaber_motion.exceptions import CommandFailedException, ConnectionFailedException
+from zaber_motion.exceptions import (
+    CommandFailedException,
+    ConnectionFailedException,
+    RequestTimeoutException,
+)
 
 from ..wizardry import MAX_RETRIES
 from .stage import Stage
@@ -285,7 +289,7 @@ class ZaberV2(Stage):
             except CommandFailedException:
                 self.log.exception(f"{command_name=} rejected for {axis=}.")
                 raise
-            except TimeoutError:
+            except RequestTimeoutException:
                 self.log.exception(f"{command_name} timed out.")
                 number_of_retries += 1
                 await asyncio.sleep(5)
