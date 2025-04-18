@@ -253,7 +253,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                 try:
                     await self.component.connect()
                     await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
-                except RuntimeError as e:
+                except Exception as e:
                     err_msg = "Failed to establish connection to component"
                     await self.fault(
                         code=ErrorCode.CONNECTION_FAILED, report=f"{err_msg}: {e}"

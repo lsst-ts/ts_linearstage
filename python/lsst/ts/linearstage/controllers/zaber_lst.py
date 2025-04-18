@@ -37,7 +37,7 @@ from zaber_motion import Units
 from zaber_motion.ascii import Axis, AxisType, Connection, Device
 from zaber_motion.exceptions import (
     CommandFailedException,
-    ConnectionFailedException,
+    InvalidDataException,
     RequestTimeoutException,
 )
 
@@ -289,8 +289,10 @@ class ZaberV2(Stage):
             except CommandFailedException:
                 self.log.exception(f"{command_name=} rejected for {axis=}.")
                 raise
-            except RequestTimeoutException:
-                self.log.exception(f"{command_name} timed out.")
+            except (RequestTimeoutException, InvalidDataException):
+                self.log.exception(
+                    f"{command_name} timed out or had invalid data... Retrying."
+                )
                 number_of_retries += 1
                 await asyncio.sleep(5)
 
@@ -300,15 +302,18 @@ class ZaberV2(Stage):
             self.mock_server = LinearStageServer(port=0, log=self.log)
             await self.mock_server.start_task
             self.config.port = self.mock_server.port
+        connection_call = Connection.open_tcp_async
+        kwargs = {"host_name": self.config.hostname, "port": self.config.port}
         try:
-            self.client = await Connection.open_tcp_async(
-                host_name=self.config.hostname, port=self.config.port
-            )
-        except ConnectionFailedException:
+            self.client = await connection_call(**kwargs)
+        except Exception:
             self.log.exception("Failed to connect to host/port.")
             raise RuntimeError(f"Unable to connect to host {self.config.hostname}.")
+        if self.simulation_mode:
+            self.client.checksum_enabled = False
         devices = await self.client.detect_devices_async()
-        self.device = devices[self.config.daisy_chain_address]
+        self.log.debug(f"{devices=}")
+        self.device = devices[self.config.daisy_chain_address - 1]
         self.log.debug(f"{self.device=}")
         self._check_axes()
         await self.update()
@@ -320,20 +325,16 @@ class ZaberV2(Stage):
         self.device = None
         self.axes = []
         self.client = None
-        if self.simulation_mode:
-            if self.mock_server is not None:
-                await self.mock_server.close()
-            self.mock_server = None
 
-    async def move_relative(self, value: float, axis: Axis) -> None:
+    async def move_relative(self, value: float, axis: int) -> None:
         """Move device to position with relative target.
 
         Parameters
         ----------
         value : `float`
             The amount to move by.
-        axis : `Axis`
-            The axis to perform the command.
+        axis : `int`
+            The reference to the axis to perform the command.
         """
         axis: Axis = self.axes[axis]
         match axis.axis_type:
@@ -354,15 +355,15 @@ class ZaberV2(Stage):
             case _:
                 raise RuntimeError(f"{axis.axis_type} is not supported.")
 
-    async def move_absolute(self, value: float, axis: Axis) -> None:
+    async def move_absolute(self, value: float, axis: int) -> None:
         """Move the device to value.
 
         Parameters
         ----------
         value : `float`
             The position to move to.
-        axis : `Axis`
-            The axis to perform the command.
+        axis : `int`
+            The reference to the axis to perform the command.
         """
         axis: Axis = self.axes[axis]
         match axis.axis_type:
