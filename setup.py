@@ -8,11 +8,13 @@ scm_version = metadata.version("setuptools_scm")
 if scm_version.startswith("8"):
     setuptools.setup(
         version=setuptools_scm.get_version(
-            version_file="python/lsst/ts/${CSC}/version.py",
+            version_file="python/lsst/ts/linearstage/version.py",
             relative_to="pyproject.toml",
         )
     )
 else:
     setuptools.setup(
-        version=setuptools_scm.get_version(write_to="python/lsst/ts/${CSC}/version.py")
+        version=setuptools_scm.get_version(
+            write_to="python/lsst/ts/linearstage/version.py"
+        )
     )
