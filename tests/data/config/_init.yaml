@@ -31,8 +31,8 @@ instances:
     target_position_maximum: 70
     stage_type: ZaberV2
     stage_config:
-      hostname: 127.0.0.1
-      port: 9000
+      hostname: localhost
+      port: 11421
       daisy_chain_address: 1
       stage_name: simulation
 
