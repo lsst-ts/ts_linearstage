@@ -41,6 +41,7 @@ from zaber_motion.exceptions import (
     RequestTimeoutException,
 )
 
+from ..enums import Move
 from ..wizardry import MAX_RETRIES
 from .stage import Stage
 
@@ -326,28 +327,37 @@ class ZaberV2(Stage):
         self.axes = []
         self.client = None
 
-    async def move_relative(self, value: float, axis: int) -> None:
+    async def move(self, move_type: Move, value: float, axis: int) -> None:
         """Move device to position with relative target.
 
         Parameters
         ----------
+        move_type : `Move`
+            Either relative or absolute.
         value : `float`
             The amount to move by.
         axis : `int`
             The reference to the axis to perform the command.
+
+        Raises
+        ------
+        RuntimeError
+            Raised when axis type is not supported.
         """
+        move_type: Move = Move(move_type)
+        command_name: str = f"move_{move_type}_async"
         axis: Axis = self.axes[axis]
         match axis.axis_type:
             case AxisType.LINEAR:
                 await self._perform(
-                    "move_relative_async",
+                    command_name=command_name,
                     axis=axis,
                     position=value,
                     unit=Units.LENGTH_MILLIMETRES,
                 )
             case AxisType.ROTARY:
                 await self._perform(
-                    "move_relative_absolute",
+                    command_name=command_name,
                     axis=axis,
                     position=value,
                     units=Units.ANGLE_DEGREES,
@@ -355,34 +365,29 @@ class ZaberV2(Stage):
             case _:
                 raise RuntimeError(f"{axis.axis_type} is not supported.")
 
-    async def move_absolute(self, value: float, axis: int) -> None:
-        """Move the device to value.
+    async def move_relative(self, value: float, axis: int) -> None:
+        """Move the stage relative to the position.
 
         Parameters
         ----------
         value : `float`
-            The position to move to.
+            The value to move by.
         axis : `int`
-            The reference to the axis to perform the command.
+            The axis index to use.
         """
-        axis: Axis = self.axes[axis]
-        match axis.axis_type:
-            case AxisType.LINEAR:
-                await self._perform(
-                    "move_absolute_async",
-                    axis=axis,
-                    position=value,
-                    unit=Units.LENGTH_MILLIMETRES,
-                )
-            case AxisType.ROTARY:
-                await self._perform(
-                    "move_absolute_async",
-                    axis=axis,
-                    position=value,
-                    unit=Units.ANGLE_DEGREES,
-                )
-            case _:
-                raise RuntimeError(f"{axis.axis_type} is not supported.")
+        await self.move(move_type=Move.RELATIVE, value=value, axis=axis)
+
+    async def move_absolute(self, value: float, axis: int) -> None:
+        """Move the stage to the position.
+
+        Parameters
+        ----------
+        value : `float`
+            The target position.
+        axis : `int`
+            The axis ID to use.
+        """
+        await self.move(move_type=Move.ABSOLUTE, value=value, axis=axis)
 
     async def home(self) -> None:
         """Home the device, needed to gain awareness of position."""
@@ -400,7 +405,13 @@ class ZaberV2(Stage):
             await self._perform("driver_disable_async", axis=axis)
 
     async def update(self) -> None:
-        """Get update of position from device."""
+        """Get update of position from device.
+
+        Raises
+        ------
+        RuntimeError
+            Raised when axis type is not supported.
+        """
         self.position = [math.nan] * len(self.axes)
         for idx, axis in enumerate(self.axes):
             self.log.debug(f"{idx=}, {axis=}")

@@ -329,7 +329,6 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.assert_target_in_range(data.distance, move_type="absolute", axis=data.axis)
 
         await self.report_detailed_state(DetailedState.MOVINGSTATE)
-        self.log.debug("Executing moveAbsolute")
         try:
             await self.component.move_absolute(data.distance, data.axis)
         except Exception as e:
@@ -339,7 +338,6 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             raise e
         finally:
             await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
-            self.log.debug("moveAbsolute complete")
 
     async def do_moveRelative(self, data):
         """Move the stage using relative position
