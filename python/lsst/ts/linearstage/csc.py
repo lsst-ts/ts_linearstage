@@ -234,6 +234,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                 errmsg = "Telemetry loop failed."
                 self.log.exception(errmsg)
                 await self.fault(code=ErrorCode.TELEMETRY, report=f"{errmsg}: {e}")
+                return
             await asyncio.sleep(self.heartbeat_interval)
 
     async def handle_summary_state(self):
@@ -252,12 +253,12 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                 try:
                     await self.component.connect()
                     await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
-                except RuntimeError as e:
+                except Exception as e:
                     err_msg = "Failed to establish connection to component"
                     await self.fault(
                         code=ErrorCode.CONNECTION_FAILED, report=f"{err_msg}: {e}"
                     )
-                    raise e
+                    return
 
             if self.telemetry_task.done():
                 self.telemetry_task = asyncio.create_task(self.telemetry())
@@ -328,7 +329,6 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.assert_target_in_range(data.distance, move_type="absolute", axis=data.axis)
 
         await self.report_detailed_state(DetailedState.MOVINGSTATE)
-        self.log.debug("Executing moveAbsolute")
         try:
             await self.component.move_absolute(data.distance, data.axis)
         except Exception as e:
@@ -338,7 +338,6 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             raise e
         finally:
             await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
-            self.log.debug("moveAbsolute complete")
 
     async def do_moveRelative(self, data):
         """Move the stage using relative position

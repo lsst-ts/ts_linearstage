@@ -1,4 +1,4 @@
-__all__ = ["ErrorCode"]
+__all__ = ["ErrorCode", "Move"]
 
 import enum
 
@@ -24,3 +24,10 @@ class ErrorCode(enum.IntEnum):
     TELEMETRY = enum.auto()
     """The telemetry loop failed."""
     STOP = enum.auto()
+
+
+class Move(enum.StrEnum):
+    RELATIVE = "relative"
+    """Move from position."""
+    ABSOLUTE = "absolute"
+    """Move to the positon."""

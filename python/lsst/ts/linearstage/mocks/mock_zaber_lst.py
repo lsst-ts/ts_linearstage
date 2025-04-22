@@ -106,7 +106,8 @@ class MockLSTV2:
     """
 
     def __init__(self) -> None:
-        self.address: int = 1
+        self.identified: bool = False
+        self.address: int = 0
         self.id: int = wizardry.ID
         self.system_serial: int = wizardry.SYSTEM_SERIAL
         self.version: str = wizardry.VERSION
@@ -157,6 +158,8 @@ class MockLSTV2:
         `str`
             The reply that was generated.
         """
+        if msg == "/0 0 00":
+            return "@01 0 0 OK IDLE WR 0"
         msg = msg.lstrip("/")
         msg = msg.split(" ")
         msg[-1] = msg[-1].split(":")[0]
@@ -228,6 +231,8 @@ class MockLSTV2:
             case "status":
                 return response + "0"
             case "comm.command.packets.max":
+                return response + f"{self.max_packet}"
+            case "comm.packet.size.max":
                 return response + f"{self.max_packet}"
             case "comm.word.size.max":
                 return response + f"{self.max_word}"
