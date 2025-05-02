@@ -57,10 +57,10 @@ class Stage(ABC):
         self.simulation_mode: int = simulation_mode
 
     # TODO DM-45058 Add a referenced property
-    # @property
-    # @abstractmethod
-    # def referenced(self):
-    #     raise NotImplementedError()
+    @property
+    @abstractmethod
+    def referenced(self):
+        raise NotImplementedError()
 
     @abstractmethod
     async def move_relative(self, value) -> None:

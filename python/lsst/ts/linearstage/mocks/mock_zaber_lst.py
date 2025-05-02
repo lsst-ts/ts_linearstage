@@ -71,7 +71,7 @@ class LinearStageServer(tcpip.OneClientReadLoopServer):
         self.log.info(f"{command=} received.")
         reply: str = self.device.parse_message(command)
         self.log.debug(f"Writing {reply=}.")
-        await self.write_str(reply)
+        await self.write_str(reply + "\r")
 
 
 class MockLSTV2:
@@ -305,6 +305,7 @@ class MockLSTV2:
         response = (
             f"@{device_address:02} {axis_address} {self.message_id:02} OK IDLE -- "
         )
+        self.homed = True
         return response + "0"
 
     def do_move(self, **kwargs) -> str:
@@ -354,11 +355,20 @@ class MockLSTV2:
     def do_warnings(self, **kwargs):
         device_address = int(kwargs["device_id"])
         axis_address = int(kwargs["axis_id"])
+        moving = self.position.moving()
+        response = f"@{device_address:02} {axis_address} {self.message_id:02} OK "
         if self.homed:
             flag = "--"
         else:
             flag = WarningFlags.NO_REFERENCE_POSITION
-        response = f"@{device_address:02} {axis_address} {self.message_id:02} OK IDLE {flag} 01 {flag}"
+        if moving:
+            status = "BUSY"
+        else:
+            status = "IDLE"
+        if self.homed:
+            response += f"{status} {flag} 00"
+        else:
+            response += f"{status} {flag} 00 {flag}"
         return response
 
 
@@ -366,6 +376,7 @@ class MockSerial:
     """Implements mock serial.
 
     Parameters
+
     ----------
     port : `str`
         The serial port.

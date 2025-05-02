@@ -37,6 +37,7 @@ from zaber_motion import Library, LogOutputMode
 
 from . import __version__, controllers
 from .config_schema import CONFIG_SCHEMA
+from .wizardry import DEFAULT_DURATION
 
 Library.set_log_output(LogOutputMode.STDOUT)
 
@@ -83,13 +84,16 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             override=override,
         )
 
-        self.component = None
+        self.component: controllers.stage.Stage = None
         self.telemetry_task = utils.make_done_future()
         self.simulation_mode_number = simulation_mode
-        self.referenced = False
         self.log.debug(
             f"LinearStage CSC initialized, simulation number is set to {self.simulation_mode_number}"
         )
+
+    @property
+    def referenced(self):
+        return self.component.referenced
 
     @staticmethod
     def get_config_pkg():
@@ -305,6 +309,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.assert_notmoving("getHome")
         await self.report_detailed_state(DetailedState.MOVINGSTATE)
         try:
+            await self.cmd_getHome.ack_in_progress(data, DEFAULT_DURATION)
             await self.component.home()
         except Exception as e:
             # reset the detailed state
@@ -312,7 +317,6 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             err_msg = "Failed to home motor"
             await self.fault(code=ErrorCode.HOME, report=f"{err_msg}: {e}")
             raise e
-        self.referenced = True
         await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
 
     async def do_moveAbsolute(self, data):
@@ -330,6 +334,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
 
         await self.report_detailed_state(DetailedState.MOVINGSTATE)
         try:
+            await self.cmd_moveAbsolute.ack_in_progress(data, DEFAULT_DURATION)
             await self.component.move_absolute(data.distance, data.axis)
         except Exception as e:
             err_msg = "Failed to perform absolute position movement"
@@ -352,6 +357,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.assert_target_in_range(data.distance, move_type="relative", axis=data.axis)
         await self.report_detailed_state(DetailedState.MOVINGSTATE)
         try:
+            await self.cmd_moveRelative.ack_in_progress(data, DEFAULT_DURATION)
             await self.component.move_relative(data.distance, data.axis)
         except Exception as e:
             errmsg = "moveRelative command failed"

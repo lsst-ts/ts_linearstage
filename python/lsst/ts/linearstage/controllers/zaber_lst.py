@@ -245,6 +245,7 @@ class ZaberV2(Stage):
         self.position: list[float] = []
         self.device: Device | None = None
         self.axes: list[Axis] = []
+        self.homed = None
 
     @property
     def connected(self) -> bool:
@@ -258,7 +259,7 @@ class ZaberV2(Stage):
 
     @property
     def referenced(self):
-        return self.device.all_axes.is_homed()
+        return self.homed
 
     async def _perform(self, command_name: str, axis: Axis, **kwargs: typing.Any):
         """Send a command to the axis.
@@ -317,6 +318,8 @@ class ZaberV2(Stage):
         self.device = devices[self.config.daisy_chain_address - 1]
         self.log.debug(f"{self.device=}")
         self._check_axes()
+        self.homed = await self.device.all_axes.is_homed_async()
+        self.log.info(f"{self.homed=}")
         await self.update()
 
     async def disconnect(self) -> None:
@@ -393,6 +396,8 @@ class ZaberV2(Stage):
         """Home the device, needed to gain awareness of position."""
         for axis in self.axes:
             await self._perform("home_async", axis=axis)
+        self.homed = await self.device.all_axes.is_homed_async()
+        self.log.info(f"{self.homed=}")
 
     async def enable_motor(self) -> None:
         """Enable the motor to move, not supported by every model."""
@@ -578,11 +583,16 @@ class Zaber(Stage):
         self.log.debug(
             f"Initialized ZaberLSTStage, simulation mode is {self.simulation_mode}"
         )
+        self.homed = False
 
     @property
     def connected(self):
         """Is the client connected?"""
         return self.commander is not None
+
+    @property
+    def referenced(self):
+        return self.homed
 
     async def connect(self):
         """Connect to the Stage."""
@@ -724,6 +734,7 @@ class Zaber(Stage):
 
         # Wait 3s for stage to complete motion
         await asyncio.sleep(_ZABER_MOVEMENT_TIME)
+        self.homed = True
 
     def check_reply(self, reply):
         """Check the reply for any issues/

@@ -100,6 +100,7 @@ class Igus(Stage):
         self.position: list[float] = [0.0]
         self.status: tuple = tuple()
         self.mode_num: int = 0
+        self.homed: bool = False
 
         self.log.debug(
             f"Initialized IgusLinearStageStepper, simulation mode is {self.simulation_mode}"
@@ -187,6 +188,10 @@ class Igus(Stage):
         if None in (self.reader, self.writer):
             return False
         return True
+
+    @property
+    def referenced(self) -> bool:
+        return self.homed
 
     async def disconnect(self) -> None:
         """Disconnect from the TCP/IP controller, if connected, and stop
@@ -950,6 +955,7 @@ class Igus(Stage):
         )
         # set position profiling mode (1 on byte 19)
         await self.set_mode("position")
+        self.homed = True
 
     def check_reply(self, reply) -> typing.NoReturn:
         """This method checks the reply for any warnings or errors and

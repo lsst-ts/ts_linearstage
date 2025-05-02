@@ -147,6 +147,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             with salobj.assertRaisesAckError():
                 await self.remote.cmd_moveAbsolute.set_start(distance=_dist)
             await self.remote.cmd_getHome.set_start(timeout=STD_TIMEOUT)
+            await asyncio.sleep(5)
             if hasattr(self.csc.component, "mock_ctrl"):
                 # set current position in the mock
                 self.csc.component.mock_ctrl.current_pos = 0.0
