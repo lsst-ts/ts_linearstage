@@ -19,15 +19,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["MockSerial", "MockLST", "LinearStageServer", "MockLSTV2"]
+__all__ = ["LinearStageServer", "MockLSTV2"]
 
 import asyncio
 import inspect
 import logging
-import queue
 import types
+import typing
 
-import serial
 from lsst.ts import simactuators, tcpip
 from zaber_motion.ascii import WarningFlags
 
@@ -66,7 +65,7 @@ class LinearStageServer(tcpip.OneClientReadLoopServer):
             command: str = await self.read_str()
         except asyncio.IncompleteReadError as e:
             # Used for debugging received message
-            self.log.info(f"{e.partial}")
+            self.log.info(f"{e.partial!r}")
             raise
         self.log.info(f"{command=} received.")
         reply: str = self.device.parse_message(command)
@@ -145,7 +144,7 @@ class MockLSTV2:
         self.homed = False
         self.log = logging.getLogger(__name__)
 
-    def parse_message(self, msg) -> str:
+    def parse_message(self, msg: str) -> str:
         """Parse the message.
 
         Parameters
@@ -161,35 +160,35 @@ class MockLSTV2:
         if msg == "/0 0 00":
             return "@01 0 0 OK IDLE WR 0"
         msg = msg.lstrip("/")
-        msg = msg.split(" ")
-        msg[-1] = msg[-1].split(":")[0]
-        count = len(msg)
+        msg_array: list = msg.split(" ")
+        msg_array[-1] = msg_array[-1].split(":")[0]
+        count = len(msg_array)
         request = types.SimpleNamespace()
-        request.device_id = msg[0]
-        request.axis_id = msg[1]
-        request.message_id = msg[2]
+        request.device_id = msg_array[0]
+        request.axis_id = msg_array[1]
+        request.message_id = msg_array[2]
         match count:
             case 3:
-                self.message_id = request.message_id
+                self.message_id = int(request.message_id)
                 return self.do_status(**vars(request))
             case 4:
-                request.command = msg[3]
+                request.command = msg_array[3]
             case 5:
-                request.command = msg[3]
-                request.parameters = msg[4]
+                request.command = msg_array[3]
+                request.parameters = msg_array[4]
             case 6:
-                request.command = msg[3]
-                request.sub_command = msg[4]
-                request.parameters = msg[5]
+                request.command = msg_array[3]
+                request.sub_command = msg_array[4]
+                request.parameters = msg_array[5]
             case 7:
-                request.command = msg[3]
-                request.sub_command = msg[4]
-                request.sub_sub_command = msg[5]
-                request.parameters = msg[6]
+                request.command = msg_array[3]
+                request.sub_command = msg_array[4]
+                request.sub_sub_command = msg_array[5]
+                request.parameters = msg_array[6]
             case _:
                 raise RuntimeError(f"Length of message of {count} is not implemented.")
         self.log.debug(f"{request=}")
-        self.message_id = request.message_id
+        self.message_id = int(request.message_id)
         commands = inspect.getmembers(self, inspect.ismethod)
         for name, method in commands:
             if name == f"do_{request.command}":
@@ -197,7 +196,7 @@ class MockLSTV2:
 
         raise NotImplementedError(f"do_{request.command} not implemented.")
 
-    def do_get(self, **kwargs) -> str:
+    def do_get(self, **kwargs: typing.Any) -> str:
         """Perform the get command."""
         field = kwargs["parameters"]
         device_address = int(kwargs["device_id"])
@@ -243,7 +242,7 @@ class MockLSTV2:
             case _:
                 raise NotImplementedError(f"{field} not implemented")
 
-    def do_storage(self, **kwargs) -> str:
+    def do_storage(self, **kwargs: typing.Any) -> str:
         """Perform the storage command."""
         sub_command = kwargs["sub_command"]
         sub_sub_command = kwargs.get("sub_sub_command")
@@ -254,7 +253,7 @@ class MockLSTV2:
             f"@{device_address:02} {axis_address} {self.message_id:02} RJ IDLE -- "
         )
 
-        def do_get():
+        def do_get() -> str:
             """Perform the storage get command."""
             match field:
                 case "zaber.label":
@@ -262,7 +261,7 @@ class MockLSTV2:
                 case _:
                     raise NotImplementedError(f"{field} not implemented")
 
-        def do_axis():
+        def do_axis() -> str:
             """Perform the storage axis command."""
             match sub_sub_command:
                 case "get":
@@ -282,7 +281,7 @@ class MockLSTV2:
             case _:
                 raise NotImplementedError(f"{sub_command} not implemented.")
 
-    def do_driver(self, **kwargs) -> str:
+    def do_driver(self, **kwargs: typing.Any) -> str:
         """Perform the driver command."""
         field = kwargs["parameters"]
         device_address = int(kwargs["device_id"])
@@ -298,7 +297,7 @@ class MockLSTV2:
             case _:
                 raise NotImplementedError(f"{field} is not implemented.")
 
-    def do_home(self, **kwargs) -> str:
+    def do_home(self, **kwargs: typing.Any) -> str:
         """Perform the home command."""
         device_address = int(kwargs["device_id"])
         axis_address = int(kwargs["axis_id"])
@@ -308,7 +307,7 @@ class MockLSTV2:
         self.homed = True
         return response + "0"
 
-    def do_move(self, **kwargs) -> str:
+    def do_move(self, **kwargs: typing.Any) -> str:
         """Peform the move command."""
         sub_command = kwargs["sub_command"]
         device_address = int(kwargs["device_id"])
@@ -318,13 +317,13 @@ class MockLSTV2:
             f"@{device_address:02} {axis_address} {self.message_id:02} OK IDLE -- "
         )
 
-        def do_rel():
+        def do_rel() -> str:
             """Perform the move rel command."""
             target = axis.position.position() + float(kwargs["parameters"])
             axis.position.set_position(position=target)
             return response + "0"
 
-        def do_abs():
+        def do_abs() -> str:
             """Perform the move abs command."""
             target = float(kwargs["parameters"])
             axis.position.set_position(position=target)
@@ -338,7 +337,7 @@ class MockLSTV2:
             case _:
                 raise NotImplementedError(f"{sub_command} is not implemented.")
 
-    def do_status(self, **kwargs) -> str:
+    def do_status(self, **kwargs: typing.Any) -> str:
         """Perform the status command."""
         device_address = int(kwargs["device_id"])
         axis_address = int(kwargs["axis_id"])
@@ -352,7 +351,7 @@ class MockLSTV2:
         )
         return response + "0"
 
-    def do_warnings(self, **kwargs):
+    def do_warnings(self, **kwargs: typing.Any) -> str:
         device_address = int(kwargs["device_id"])
         axis_address = int(kwargs["axis_id"])
         moving = self.position.moving()
@@ -370,263 +369,3 @@ class MockLSTV2:
         else:
             response += f"{status} {flag} 00 {flag}"
         return response
-
-
-class MockSerial:
-    """Implements mock serial.
-
-    Parameters
-
-    ----------
-    port : `str`
-        The serial port.
-    baudrate : `int`
-        The baudrate of the port.
-    bytesize : `int`
-        The number of bytes.
-    parity
-        The parity check.
-    stopbits
-        The number of stopbits.
-    timeout : `None` or `float`
-        The timeout.
-    xonxoff : `bool`
-        The transfer feed.
-    rtscts : `bool`
-        The flow control.
-    write_timeout : `None` or `float`
-        The write timeout.
-    dsrdtr : `bool`
-        dsrdtr.
-    inter_byte_timeout : `None` or `float`
-        The inter byte timeout.
-    exclusive : `None`
-        Exclusive lock of the port.
-
-    Attributes
-    ----------
-    log : `logging.Logger`
-        The log of the mock serial.
-    name : `str`
-        The name of the port.
-    baudrate : `int`
-        The baudrate.
-    bytesize : `int`
-        The size of the byte.
-    parity
-        The parity check type.
-    stopbits
-        The number of stopbits.
-    timeout : `None` or `float`
-        The timeout.
-    xonxoff : `bool`
-        xonoff.
-    rtscts : `bool`
-        rtscts.
-    write_timeout : `None` or `float`
-        The write timeout.
-    dsrdts : `bool`
-        dsrdts
-    inter_byte_timeout : `None` or `float`
-        The inter byte timeout.
-    exclusive : `bool`
-        Exclusivity.
-    opened : `bool`
-        Whether the port is opened?
-    device : `MockLST`
-        The mock device.
-    message_queue : `queue.Queue`
-        Contains the messages that are to be sent to the client.
-    """
-
-    def __init__(
-        self,
-        port,
-        baudrate=9600,
-        bytesize=serial.EIGHTBITS,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        timeout=None,
-        xonxoff=False,
-        rtscts=False,
-        write_timeout=None,
-        dsrdtr=False,
-        inter_byte_timeout=None,
-        exclusive=None,
-    ):
-        self.log = logging.getLogger(__name__)
-        self.name = port
-        self.baudrate = baudrate
-        self.bytesize = bytesize
-        self.parity = parity
-        self.stopbits = stopbits
-        self.timeout = timeout
-        self.xonxoff = xonxoff
-        self.rtscts = rtscts
-        self.write_timeout = write_timeout
-        self.dsrdtr = dsrdtr
-        self.inter_byte_timeout = inter_byte_timeout
-        self.exclusive = exclusive
-        self.opened = False
-
-        self.device = MockLST()
-        self.message_queue = queue.Queue()
-
-        self.log.info("MockSerial created")
-
-    def readline(self, size=-1):
-        """Read the line.
-
-        Parameters
-        ----------
-        size : `int`, optional
-            The size of the line.
-
-        Returns
-        -------
-        msg : `bytes`
-            The message from the queue.
-        """
-        self.log.info("Reading from queue")
-        msg = self.message_queue.get()
-        self.log.info(msg.encode())
-        return msg.encode()
-
-    def write(self, data):
-        """Write the data.
-
-        Parameters
-        ----------
-        data : `bytes`
-            The command message.
-        """
-        self.log.info(data)
-        msg = self.device.parse_message(data.decode())
-        self.log.debug(msg)
-        self.message_queue.put(msg)
-        self.log.info("Putting into queue")
-
-    def close(self):
-        """Close the serial connection."""
-        self.log.info("Closing serial connection")
-
-
-class MockLST:
-    """Implements mock LinearStage.
-
-    Attributes
-    ----------
-    log : `logging.Logger`
-        The log.
-    position : `int`
-        The position.
-    status : `str`
-        The status.
-    device_number : `int`
-        The device address.
-
-    """
-
-    def __init__(self):
-        self.log = logging.getLogger(__name__)
-        self.position = 0.0
-        self.status = "IDLE"
-        self.device_number = 1
-        self.log.info("MockLST created")
-
-    def parse_message(self, msg):
-        """Parse the message and return a reply.
-
-        Parameters
-        ----------
-        msg : `str`
-            The message to be parsed.
-
-        Returns
-        -------
-        reply : `str`
-            The response to the message received.
-        """
-        try:
-            self.log.info(f"{msg=} received.")
-            msg = msg.rstrip("\r\n").split(" ")
-            msg[0].lstrip("/")
-            msg[1]
-            command = msg[2]
-            parameters = msg[3:]
-        except IndexError:
-            reply = self.do_status()
-            return reply
-        methods = inspect.getmembers(self, inspect.ismethod)
-        for name, func in methods:
-            if name == f"do_{command}":
-                if parameters:
-                    reply = func(*parameters)
-                    return reply
-                else:
-                    reply = func()
-                    return reply
-
-        self.log.info(f"{command} not supported.")
-
-    def do_identify(self):
-        """Perform the identify command."""
-        return self.identity
-
-    def do_status(self):
-        """Perform the status command."""
-        return f"@{self.device_number} 0 OK {self.status} -- 0"
-
-    def do_get(self, field):
-        """Return the position of the device.
-
-        field : `str`
-            The field data to return.
-
-        Returns
-        -------
-        str
-            The formatted reply
-        """
-        match field:
-            case "pos":
-                return f"@{self.device_number} 0 OK {self.status} -- {self.position}"
-            case "status":
-                return f"@{self.device_number} 0 OK {self.status} -- 0"
-            case "deviceid:42":
-                return "@01 0 OK IDLE FO 30342"
-            case _:
-                self.log.info(f"{field=} is not recognized.")
-
-    def do_home(self):
-        """Home the device.
-
-        Returns
-        -------
-        str
-            The formatted reply.
-        """
-        return f"@{self.device_number} 0 OK {self.status} -- 0"
-
-    def do_move(self, mode, position):
-        """Move the device using absolute position.
-
-        Parameters
-        ----------
-        mode : `str`
-            The movement mode.
-        position : `int`
-            The target to move to/by.
-        Returns
-        -------
-        str
-            The formatted reply
-        """
-        match mode:
-            case "abs":
-                self.position = float(position)
-            case "rel":
-                self.position += float(position)
-            case _:
-                self.log.info(f"{mode=} is not recognized.")
-        return f"@{self.device_number} 0 OK {self.status} -- 0"

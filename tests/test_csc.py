@@ -24,29 +24,32 @@ import pathlib
 import unittest
 
 import pytest
-from lsst.ts import linearstage, salobj
+from lsst.ts import salobj
+from lsst.ts.linearstage.csc import LinearStageCSC
 from lsst.ts.xml.enums.LinearStage import DetailedState
 from parameterized import parameterized
 
-TEST_CONFIG_DIR = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
+TEST_CONFIG_DIR: pathlib.Path = (
+    pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
+)
 
-CONFIGS = ["igus.yaml", "zaber.yaml"]
+CONFIGS: list[str] = ["igus.yaml", "zaber.yaml"]
 
-STD_TIMEOUT = 20
+STD_TIMEOUT: int = 20
 
-INDEXES = [2, 3]
+INDEXES: list[int] = [2, 3]
 
 
 class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
     def basic_make_csc(
         self,
-        index,
-        initial_state,
-        config_dir=TEST_CONFIG_DIR,
-        simulation_mode=1,
-        override="",
-    ):
-        return linearstage.LinearStageCSC(
+        index: int,
+        initial_state: salobj.State,
+        config_dir: pathlib.Path = TEST_CONFIG_DIR,
+        simulation_mode: int = 1,
+        override: str = "",
+    ) -> LinearStageCSC:
+        return LinearStageCSC(
             index=index,
             initial_state=initial_state,
             config_dir=config_dir,
@@ -54,13 +57,13 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             override=override,
         )
 
-    async def test_bin_script(self):
+    async def test_bin_script(self) -> None:
         await self.check_bin_script(
             name="LinearStage", exe_name="run_linearstage", index=1
         )
 
     @parameterized.expand(INDEXES)
-    async def test_standard_state_transitions(self, index):
+    async def test_standard_state_transitions(self, index: int) -> None:
         async with self.make_csc(
             index=index,
             initial_state=salobj.State.STANDBY,
@@ -76,7 +79,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                 ]
             )
 
-    async def test_invalid_index(self):
+    async def test_invalid_index(self) -> None:
         with self.assertRaises(salobj.AckError):
             async with self.make_csc(
                 index=4,
@@ -87,7 +90,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                 await self.remote.cmd_start.set_start(timeout=10)
 
     @parameterized.expand(INDEXES)
-    async def test_telemetry(self, index):
+    async def test_telemetry(self, index: int) -> None:
         async with self.make_csc(
             index=index,
             initial_state=salobj.State.ENABLED,
@@ -119,7 +122,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                     assert position_topic.position == pytest.approx([0])
 
     @parameterized.expand(INDEXES)
-    async def test_getHome(self, index):
+    async def test_getHome(self, index: int) -> None:
         async with self.make_csc(
             index=index,
             initial_state=salobj.State.ENABLED,
@@ -135,7 +138,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             # can come back to enabled and move.
 
     @parameterized.expand(INDEXES)
-    async def test_moveAbsolute(self, index):
+    async def test_moveAbsolute(self, index: int) -> None:
         async with self.make_csc(
             index=index,
             initial_state=salobj.State.ENABLED,
@@ -175,7 +178,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                 assert position.position == pytest.approx([10], rel=1.5e-6)
 
     @parameterized.expand(INDEXES)
-    async def test_moveRelative(self, index):
+    async def test_moveRelative(self, index: int) -> None:
         async with self.make_csc(
             index=index,
             initial_state=salobj.State.STANDBY,

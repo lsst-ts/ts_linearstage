@@ -51,19 +51,21 @@ class Stage(ABC):
 
     def __init__(
         self, config: types.SimpleNamespace, log: logging.Logger, simulation_mode: int
-    ):
+    ) -> None:
         self.config: types.SimpleNamespace = config
         self.log: logging.Logger = log
         self.simulation_mode: int = simulation_mode
+        self.position: list[float] = []
+        self.axes: list = []
 
     # TODO DM-45058 Add a referenced property
     @property
     @abstractmethod
-    def referenced(self):
+    def referenced(self) -> bool:
         raise NotImplementedError()
 
     @abstractmethod
-    async def move_relative(self, value) -> None:
+    async def move_relative(self, value: float, axis: int) -> None:
         """Move the stage from position to target.
 
         Parameters
@@ -74,7 +76,7 @@ class Stage(ABC):
         pass
 
     @abstractmethod
-    async def move_absolute(self, value) -> None:
+    async def move_absolute(self, value: float, axis: int) -> None:
         """Move the stage to target.
 
         Parameters
@@ -125,3 +127,14 @@ class Stage(ABC):
     def get_config_schema(cls) -> dict:
         """Get the device specific configuration schema."""
         pass
+
+    @abstractmethod
+    async def stop(self, axis: int) -> None:
+        """Stop the stage.
+
+        Parameters
+        ----------
+        axis : `int`
+            The index of the axis to stop.
+        """
+        raise NotImplementedError

@@ -29,10 +29,10 @@ from lsst.ts import salobj
 from .csc import LinearStageCSC
 
 
-def execute_csc():
+def execute_csc() -> None:
     """Execute the CSC."""
     asyncio.run(LinearStageCSC.amain(index=True))
 
 
-def command_csc():
+def command_csc() -> None:
     asyncio.run(salobj.CscCommander.amain(index=True, name="LinearStage"))

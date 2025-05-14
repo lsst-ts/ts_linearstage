@@ -30,7 +30,9 @@ logger = logging.getLogger(__name__)
 _STD_TIMEOUT = 5  # seconds
 
 
-async def read_telegram(reader, timeout=_STD_TIMEOUT):
+async def read_telegram(
+    reader: asyncio.StreamReader, timeout: float = _STD_TIMEOUT
+) -> list:
     """Reads a telegram from the igus controller.
 
     This is required because it sends packets of different lengths
@@ -68,7 +70,7 @@ async def read_telegram(reader, timeout=_STD_TIMEOUT):
     return full_telegram
 
 
-def derive_handshake(telegram):
+def derive_handshake(telegram: tuple | None) -> tuple | None:
     """Derive what the expected handshake is for a given command.
     The handshake will consist of parts of the command, but not all.
 
@@ -84,6 +86,8 @@ def derive_handshake(telegram):
         Expected handshake from controller. Returns None if no handshake
         is to be expected
     """
+    if telegram is None:
+        raise RuntimeError("Telegram is None.")
 
     # Check that the telegram is a write telegram
     if telegram[9] == 1:
@@ -93,7 +97,7 @@ def derive_handshake(telegram):
         handshake[5] = 13
         for i in range(15, 19):
             handshake[i] = 0
-        handshake = tuple(handshake)
+        configured_handshake = tuple(handshake)
         # logging.debug(f"Derived handshake of {handshake}")
     elif telegram is telegrams_write["status_request"]:
         return None
@@ -102,10 +106,10 @@ def derive_handshake(telegram):
             "Telegram type not recognized, cannot derive expected handshake."
         )
 
-    return handshake
+    return configured_handshake
 
 
-def interpret_read_telegram(telegram, mode):
+def interpret_read_telegram(telegram: tuple, mode: int) -> str:
     """Breaks down what a telegram means when received from the controller.
 
     The telegram is up to 24 bytes (but numbering is zero based, 0-23).
