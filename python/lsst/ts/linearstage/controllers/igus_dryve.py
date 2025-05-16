@@ -100,6 +100,8 @@ class Igus(Stage):
         self.position: list[float] = [0.0]
         self.status: tuple = tuple()
         self.mode_num: int = 0
+        self.homed: bool = False
+        self.axes: list[int] = [1]
 
         self.log.debug(
             f"Initialized IgusLinearStageStepper, simulation mode is {self.simulation_mode}"
@@ -187,6 +189,10 @@ class Igus(Stage):
         if None in (self.reader, self.writer):
             return False
         return True
+
+    @property
+    def referenced(self) -> bool:
+        return self.homed
 
     async def disconnect(self) -> None:
         """Disconnect from the TCP/IP controller, if connected, and stop
@@ -731,7 +737,7 @@ class Igus(Stage):
         self.log.info(f"Estimated time to target is {estimated_time:0.3f} seconds.")
         return estimated_time
 
-    async def move_absolute(self, value: float, axis) -> None:
+    async def move_absolute(self, value: float, axis: int) -> None:
         """This method moves the linear stage absolutely by the number of
         steps away from the zero (homed) position.
         i.e. value=10 would mean the stage would move 10 millimeters away from
@@ -741,7 +747,7 @@ class Igus(Stage):
         ----------
         value : `float`
             The number of millimeters to move the stage.
-        axis : `Axis`
+        axis : `int`
             The axis to perform the command.
 
         Returns
@@ -815,7 +821,7 @@ class Igus(Stage):
             [telegrams_read["target_reached"]], timeout=movement_time + 5.0
         )
 
-    async def move_relative(self, value: float, axis) -> None:
+    async def move_relative(self, value: float, axis: int) -> None:
         """This method moves the linear stage relative to the current position.
         The method basically wraps the absolute positioning code.
 
@@ -950,24 +956,7 @@ class Igus(Stage):
         )
         # set position profiling mode (1 on byte 19)
         await self.set_mode("position")
-
-    def check_reply(self, reply) -> typing.NoReturn:
-        """This method checks the reply for any warnings or errors and
-        acknowledgement or rejection of the command.
-
-        This is not yet implemented for the Igus stage.
-
-        Parameters
-        ----------
-        reply :
-            This is the reply that is to be checked.
-
-        Returns
-        -------
-
-        """
-
-        raise NotImplementedError
+        self.homed = True
 
     async def get_position(self) -> float:
         """This method returns the position of the linear stage.
@@ -1033,14 +1022,18 @@ class Igus(Stage):
         self.position[0] = await self.get_position()
         self.status = await self.retrieve_status()
 
-    def stop(self) -> typing.NoReturn:
+    def stop(self, axis: int) -> typing.NoReturn:
         """Stops the movement of the stage.
         This should never need to be used since movement commands do not
         return until completed"""
         raise NotImplementedError
 
     async def send_telegram(
-        self, cmd, return_response=True, check_handshake=False, timeout=_STD_TIMEOUT
+        self,
+        cmd: tuple,
+        return_response: bool = True,
+        check_handshake: bool = False,
+        timeout: float = _STD_TIMEOUT,
     ) -> tuple | None:
         """Send a command to the TCP/IP controller and process its replies.
 

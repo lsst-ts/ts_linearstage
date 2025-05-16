@@ -33,8 +33,8 @@ from lsst.ts.linearstage.controllers import (
 
 
 class TestIgusLinearStageStepper(unittest.IsolatedAsyncioTestCase):
-    async def asyncSetUp(self):
-        config = types.SimpleNamespace(
+    async def asyncSetUp(self) -> None:
+        config: types.SimpleNamespace = types.SimpleNamespace(
             **{
                 "socket_port": 502,
                 "socket_address": "192.168.0.148",
@@ -47,18 +47,18 @@ class TestIgusLinearStageStepper(unittest.IsolatedAsyncioTestCase):
                 "motion_acceleration": 20,
             }
         )
-        self.lsc = Igus(
+        self.lsc: Igus = Igus(
             config=config, simulation_mode=True, log=logging.getLogger(__name__)
         )
 
-    async def test_connect_disconnect(self):
+    async def test_connect_disconnect(self) -> None:
         await self.lsc.connect()
         # request status
         status = await self.lsc.retrieve_status()
         self.assertEqual(tuple(status), telegrams_read["switch_on_disabled"])
         await self.lsc.disconnect()
 
-    async def test_enable_motor(self):
+    async def test_enable_motor(self) -> None:
         await self.lsc.connect()
         # # Disable the motor
         await self.lsc.disable_motor()
@@ -81,7 +81,7 @@ class TestIgusLinearStageStepper(unittest.IsolatedAsyncioTestCase):
         # self.assertTrue(False)
         await self.lsc.disconnect()
 
-    async def test_utils_interpret_read_telegram(self):
+    async def test_utils_interpret_read_telegram(self) -> None:
         # test for one that exists
         telegram = (0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 33, 6)
         mode = 6
@@ -94,7 +94,7 @@ class TestIgusLinearStageStepper(unittest.IsolatedAsyncioTestCase):
             f"The following telegram could not be interpreted: \n {telegram}" in msg
         )
 
-    async def test_weird_state_handling(self):
+    async def test_weird_state_handling(self) -> None:
         await self.lsc.connect()
         await self.lsc.send_telegram(
             telegrams_write["unexpected_response_check"],

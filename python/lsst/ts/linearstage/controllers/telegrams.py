@@ -22,7 +22,7 @@
 # This file contains the dictionaries of telegrams that are send/received
 # to the igusDryveController
 
-telegrams_write = {
+telegrams_write: dict[str, tuple] = {
     "status_request": (0, 0, 0, 0, 0, 13, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2),
     "shutdown": (
         0,
@@ -123,7 +123,7 @@ telegrams_write = {
         2,
     ),
 }
-telegrams_read = {
+telegrams_read: dict[str, tuple] = {
     # Status of initial state after powering on
     # and enabled bit is set (manually)
     # It does not appear possible to go back to this state once leaving it
@@ -320,7 +320,7 @@ telegrams_read = {
 }
 # These are the responses that you do not want to see from the
 # controller as it means something is not correct
-telegrams_read_errs = {
+telegrams_read_errs: dict[str, tuple] = {
     # Status when turned on but remote mode not set correctly
     # (see Section 6.4.1 in the Manual)
     # Note that the drive needs to be enabled via DI7 (manually

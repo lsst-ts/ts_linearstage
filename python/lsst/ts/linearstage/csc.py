@@ -23,6 +23,7 @@
 __all__ = ["LinearStageCSC"]
 
 import asyncio
+import pathlib
 import types
 
 from lsst.ts import salobj, utils
@@ -33,10 +34,12 @@ try:
     from lsst.ts.xml.enums.LinearStage import ErrorCode
 except ImportError:
     from .enums import ErrorCode
+
 from zaber_motion import Library, LogOutputMode
 
 from . import __version__, controllers
 from .config_schema import CONFIG_SCHEMA
+from .wizardry import DEFAULT_DURATION
 
 Library.set_log_output(LogOutputMode.STDOUT)
 
@@ -61,18 +64,18 @@ class LinearStageCSC(salobj.ConfigurableCsc):
     simulation_mode_number : `int`
     """
 
-    valid_simulation_modes = (0, 1)
+    valid_simulation_modes: tuple = (0, 1)
     """The valid simulation modes for the CSC."""
-    version = __version__
+    version: str = __version__
 
     def __init__(
         self,
-        index,
-        initial_state=salobj.State.STANDBY,
-        config_dir=None,
-        simulation_mode=0,
-        override=None,
-    ):
+        index: int,
+        initial_state: salobj.State = salobj.State.STANDBY,
+        config_dir: None | pathlib.Path = None,
+        simulation_mode: int = 0,
+        override: None | str = None,
+    ) -> None:
         super().__init__(
             name="LinearStage",
             index=index,
@@ -83,20 +86,26 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             override=override,
         )
 
-        self.component = None
-        self.telemetry_task = utils.make_done_future()
-        self.simulation_mode_number = simulation_mode
-        self.referenced = False
+        self.component: controllers.stage.Stage | None = None
+        self.telemetry_task: asyncio.Future = utils.make_done_future()
+        self.simulation_mode_number: int = simulation_mode
         self.log.debug(
             f"LinearStage CSC initialized, simulation number is set to {self.simulation_mode_number}"
         )
 
+    @property
+    def referenced(self) -> bool:
+        if self.component is None:
+            return False
+        else:
+            return self.component.referenced
+
     @staticmethod
-    def get_config_pkg():
+    def get_config_pkg() -> str:
         """Return the name of the configuration package."""
         return "ts_config_mtcalsys"
 
-    async def configure(self, config):
+    async def configure(self, config: types.SimpleNamespace) -> None:
         """Configure the CSC.
 
         Parameters
@@ -122,7 +131,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         )
 
     @property
-    def detailed_state(self):
+    def detailed_state(self) -> DetailedState:
         """The substate of the LinearStage.
 
         Parameters
@@ -136,12 +145,12 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         """
         return DetailedState(self.evt_detailedState.data.detailedState)
 
-    async def report_detailed_state(self, new_sub_state):
+    async def report_detailed_state(self, new_sub_state: int) -> None:
         """Report the new sub state."""
         new_sub_state = DetailedState(new_sub_state)
         await self.evt_detailedState.set_write(detailedState=new_sub_state)
 
-    def assert_referenced(self):
+    def assert_referenced(self) -> None:
         """Assert the stage is referenced.
 
         Raises
@@ -156,7 +165,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                 "Stage not homed. Perform homing prior to running this method"
             )
 
-    def assert_notmoving(self, action):
+    def assert_notmoving(self, action: str) -> None:
         """Is the action happening while not moving.
 
         Parameters
@@ -174,7 +183,9 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                 f"DetailedState is MOVINGSTATE, {action} not allowed in state {self.detailed_state}"
             )
 
-    def assert_target_in_range(self, target_value, move_type, axis):
+    def assert_target_in_range(
+        self, target_value: float, move_type: str, axis: int
+    ) -> None:
         """Is the target out of range?
 
         Parameters
@@ -191,6 +202,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         salobj.ExpectedError
             Raised when the command is not allowed in the current state.
         """
+        assert self.component is not None
         if move_type == "relative":
             if (
                 self.salinfo.component_info.topics["tel_position"]
@@ -211,8 +223,9 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                 f" {self.target_position_maximum} mm"
             )
 
-    async def telemetry(self):
+    async def telemetry(self) -> None:
         """Run the telemetry loop."""
+        assert self.component is not None
         self.log.debug(
             f"Starting telemetry loop using interval of {self.heartbeat_interval} seconds"
         )
@@ -237,7 +250,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                 return
             await asyncio.sleep(self.heartbeat_interval)
 
-    async def handle_summary_state(self):
+    async def handle_summary_state(self) -> None:
         """Handle the summary state.
 
         If CSC transitioning to the Disabled or Enabled state.
@@ -247,14 +260,15 @@ class LinearStageCSC(salobj.ConfigurableCsc):
 
         Else it will disconnect the stage and cancel the telemetry task.
         """
-
         if self.disabled_or_enabled:
+            assert self.component is not None
             if not self.component.connected:
                 try:
                     await self.component.connect()
                     await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
                 except Exception as e:
                     err_msg = "Failed to establish connection to component"
+                    self.log.exception(err_msg)
                     await self.fault(
                         code=ErrorCode.CONNECTION_FAILED, report=f"{err_msg}: {e}"
                     )
@@ -273,6 +287,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                     await self.component.disable_motor()
             except Exception as e:
                 err_msg = "Failed to enable or disable motor"
+                self.log.exception(err_msg)
                 await self.fault(code=ErrorCode.DISABLE_MOTOR, report=f"{err_msg}: {e}")
                 raise e
         else:
@@ -284,7 +299,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                     self.component = None
             self.telemetry_task.cancel()
 
-    async def close_tasks(self):
+    async def close_tasks(self) -> None:
         """End the telemetry loop and disconnect from the stage."""
         self.log.debug("Closing tasks")
         await super().close_tasks()
@@ -293,7 +308,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             await self.component.disconnect()
             self.component = None
 
-    async def do_getHome(self, data):
+    async def do_getHome(self, data: salobj.BaseDdsDataType) -> None:
         """Home the stage.
 
         Parameters
@@ -301,10 +316,14 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         data : `cmd_getHome.DataType`
             Command data.
         """
+        assert self.component is not None
         self.assert_enabled("getHome")
         self.assert_notmoving("getHome")
         await self.report_detailed_state(DetailedState.MOVINGSTATE)
         try:
+            await self.cmd_getHome.ack_in_progress(
+                data, DEFAULT_DURATION * len(self.component.axes)
+            )
             await self.component.home()
         except Exception as e:
             # reset the detailed state
@@ -312,10 +331,9 @@ class LinearStageCSC(salobj.ConfigurableCsc):
             err_msg = "Failed to home motor"
             await self.fault(code=ErrorCode.HOME, report=f"{err_msg}: {e}")
             raise e
-        self.referenced = True
         await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
 
-    async def do_moveAbsolute(self, data):
+    async def do_moveAbsolute(self, data: salobj.BaseDdsDataType) -> None:
         """Move the stage using absolute position.
 
         Parameters
@@ -323,6 +341,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         data : `cmd_moveAbsolute.DataType`
             Command data.
         """
+        assert self.component is not None
         self.assert_enabled("moveAbsolute")
         self.assert_notmoving("moveAbsolute")
         self.assert_referenced()
@@ -330,6 +349,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
 
         await self.report_detailed_state(DetailedState.MOVINGSTATE)
         try:
+            await self.cmd_moveAbsolute.ack_in_progress(data, DEFAULT_DURATION)
             await self.component.move_absolute(data.distance, data.axis)
         except Exception as e:
             err_msg = "Failed to perform absolute position movement"
@@ -339,7 +359,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         finally:
             await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
 
-    async def do_moveRelative(self, data):
+    async def do_moveRelative(self, data: salobj.BaseDdsDataType) -> None:
         """Move the stage using relative position
 
         Parameters
@@ -347,11 +367,13 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         data : `cmd_moveRelative.DataType`
             Command data.
         """
+        assert self.component is not None
         self.assert_enabled("moveRelative")
         self.assert_notmoving("moveRelative")
         self.assert_target_in_range(data.distance, move_type="relative", axis=data.axis)
         await self.report_detailed_state(DetailedState.MOVINGSTATE)
         try:
+            await self.cmd_moveRelative.ack_in_progress(data, DEFAULT_DURATION)
             await self.component.move_relative(data.distance, data.axis)
         except Exception as e:
             errmsg = "moveRelative command failed"
@@ -361,7 +383,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         finally:
             await self.report_detailed_state(DetailedState.NOTMOVINGSTATE)
 
-    async def do_stop(self, data):
+    async def do_stop(self, data: salobj.BaseDdsDataType) -> None:
         """Stop the stage.
 
         Parameters
@@ -369,6 +391,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         data : `cmd_stop.DataType`
             Command data.
         """
+        assert self.component is not None
         self.assert_enabled("stop")
         try:
             await self.component.stop(data.axis)

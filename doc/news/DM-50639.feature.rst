@@ -1,0 +1,1 @@
+Added getting home information from stage when connecting so that no unnecessary homes are performed.

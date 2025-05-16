@@ -1,5 +1,8 @@
 """Sphinx configuration file for TSSW package"""
 
+# mypy: ignore-errors
+# ruff: noqa: F405, F403
+
 from documenteer.conf.pipelinespkg import *
 
 project = "ts_linearstage"

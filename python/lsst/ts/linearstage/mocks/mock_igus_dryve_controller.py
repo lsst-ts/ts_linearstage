@@ -21,11 +21,12 @@
 __all__ = ["MockIgusDryveController"]
 
 import asyncio
+import logging
 
 from ..controllers.telegrams import telegrams_read, telegrams_read_errs, telegrams_write
 from ..controllers.utils import derive_handshake, read_telegram
 
-_STD_TIMEOUT = 5  # seconds
+_STD_TIMEOUT: int = 5  # seconds
 
 
 # FIXME DM-45058 Inherit from tcpip.OneClientReadLoopServer
@@ -57,45 +58,45 @@ class MockIgusDryveController:
     * Nothing works yet
     """
 
-    def __init__(self, port, host, log):
+    def __init__(self, port: int, host: str, log: logging.Logger) -> None:
         # If port == 0 then this will be updated to the actual port
         # in `start`, right after the TCP/IP server is created.
-        self.port = port
-        self.host = host
+        self.port: int = port
+        self.host: str = host
 
-        self.log = log.getChild("MockIgusDryveController")
-        self.server = None
+        self.log: logging.Logger = log.getChild("MockIgusDryveController")
+        self.server: None | asyncio.Server = None
 
         # Possible incoming/outgoing telegrams
         # Telegrams to be received by controller, which are identical to
         # what is written by the client (hardware.py)
         # must be tuples for them to be hashable
-        self.telegram_incoming = telegrams_write
+        self.telegram_incoming: dict = telegrams_write
         # Telegrams to be send by controller, which are identical to
         # what is read by the client (hardware.py)
-        self.telegram_responses = telegrams_read
+        self.telegram_responses: dict = telegrams_read
         #
-        self.telegram_responses_errs = telegrams_read_errs
+        self.telegram_responses_errs: dict = telegrams_read_errs
         # defines current state of system, must be consistent with a name in
-        self.state = "switch_on_disabled"
-        self.status_bits0_7 = 64
-        self.status_bits8_16 = 6
-        self.feed_constant_mm_per_rot = None
-        self.homing_speed_switch_rpm = None
-        self.homing_speed_zero_rpm = None
-        self.homing_accel_rpm_per_min2 = None
-        self.motion_accel_rpm_per_min2 = None
-        self.motion_accel_rpm = None
+        self.state: str = "switch_on_disabled"
+        self.status_bits0_7: int = 64
+        self.status_bits8_16: int = 6
+        self.feed_constant_mm_per_rot: None = None
+        self.homing_speed_switch_rpm: None = None
+        self.homing_speed_zero_rpm: None = None
+        self.homing_accel_rpm_per_min2: None = None
+        self.motion_accel_rpm_per_min2: None = None
+        self.motion_accel_rpm: None = None
         # define operational mode ( undefined (0), homing (6) or
         # position profile (1))
-        self.mode = 0
+        self.mode: int = 0
         # Current position is often near zero but not actually zero when
         # turned on
-        self.current_pos = 1.2
-        self.target_pos = 0.0
+        self.current_pos: float = 1.2
+        self.target_pos: float = 0.0
 
         # last received command
-        self.cmd = None
+        self.cmd: None | tuple = None
 
         # Create the dictionary that defines the responses based on the
         # incoming telegram
@@ -107,7 +108,7 @@ class MockIgusDryveController:
         # This means using tuples instead of dictionaries
 
         # FIXME: DM-45058 remove the has-data bit boolean
-        self.dispatch_dict = {
+        self.dispatch_dict: dict = {
             self.telegram_incoming["status_request"]: (False, self.do_status_request),
             self.telegram_incoming["switch_on"]: (False, self.do_switch_on),
             self.telegram_incoming["enable_operation"]: (False, self.enable_operation),
@@ -120,7 +121,7 @@ class MockIgusDryveController:
 
         self.log.debug("Initialized MockIgusDryveController")
 
-    async def start(self):
+    async def start(self) -> tuple[str, int]:
         """Start the TCP/IP server.
 
         Set start_task done and start the command loop.
@@ -135,7 +136,7 @@ class MockIgusDryveController:
             )
         return self.host, self.port
 
-    async def stop(self, timeout=5):
+    async def stop(self, timeout: int = 5) -> None:
         """Stop the TCP/IP server."""
         if self.server is None:
             return
@@ -145,7 +146,9 @@ class MockIgusDryveController:
         server.close()
         await asyncio.wait_for(server.wait_closed(), timeout=timeout)
 
-    async def cmd_loop(self, reader, writer):
+    async def cmd_loop(
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
         """Execute commands and output replies."""
         self.log.info("cmd_loop begins")
         while True:
@@ -176,7 +179,7 @@ class MockIgusDryveController:
 
                         # Has_data is going to be deprecated, but hasn't yet
                         if has_data:
-                            outputs = func(items[0])
+                            outputs = func(items)
                         else:
                             outputs = func()
 
@@ -197,7 +200,7 @@ class MockIgusDryveController:
                 except Exception:
                     self.log.exception(f"command {line} failed")
 
-    def do_status_request(self):
+    def do_status_request(self) -> list:
         """Perform status request."""
         self.log.debug(
             f"Publishing status requested from status_request command, corresponding to state {self.state}"
@@ -205,7 +208,7 @@ class MockIgusDryveController:
         self.log.debug(f"Responding with {self.telegram_responses[self.state]}")
         return [self.telegram_responses[self.state]]
 
-    def do_shutdown(self):
+    def do_shutdown(self) -> list:
         """Transitions state from to switch_on_disabled to ready_to_switch_on
         and publishes handshake.
         Transitions can occur from multiple states.
@@ -236,7 +239,7 @@ class MockIgusDryveController:
                 f"Current state of {self.state} does not have a keyword pair with appropriate response"
             )
 
-    def do_switch_on(self):
+    def do_switch_on(self) -> list:
         """Transitions state to from switch_on_disabled to switched_on and
          publishes handshake
 
@@ -261,7 +264,7 @@ class MockIgusDryveController:
                 f"Current state of {self.state} does not have a keyword pair with appropriate response"
             )
 
-    def do_set_weird_state1(self):
+    def do_set_weird_state1(self) -> list:
         """Transitions state to something the program isn't expecting just
         to test error handling
 
@@ -277,7 +280,7 @@ class MockIgusDryveController:
         self.state = "weird_state1"
         return _response_telegrams
 
-    def enable_operation(self):
+    def enable_operation(self) -> list:
         """Transitions state from switched_on to operation_enabled and
         publishes handshake
 
@@ -296,7 +299,7 @@ class MockIgusDryveController:
                 f"Current state of {self.state} does not have an appropriate response in mock."
             )
 
-    def do_set_mode(self, mode):
+    def do_set_mode(self, mode: int) -> list:
         """Changes mode (based on received 6060h telegram)
         Modes which are supported by the are defined in
         interpret_write_telegram
@@ -323,7 +326,7 @@ class MockIgusDryveController:
         response_telegrams = [derive_handshake(self.cmd)]
         return response_telegrams
 
-    def do_get_mode(self):
+    def do_get_mode(self) -> list:
         """Retrieves current mode (based on received 6061h telegram)
         Modes which are supported by the are defined in
         interpret_write_telegram.
@@ -333,6 +336,8 @@ class MockIgusDryveController:
         # 6 is homing, 1 is profile positioning, 0 is undefined
         # _response = [0, 0, 0, 0, 0, 14, 0, 43, 13,
         # 0, 0, 0, 96, 97, 0, 0, 0, 0, 1, self.mode]
+        if self.cmd is None:
+            raise RuntimeError("Command is None.")
         _response = list(self.cmd[0:19])
         _response[5] = 14
         _response.append(self.mode)
@@ -340,7 +345,7 @@ class MockIgusDryveController:
         response_telegrams = [_response]
         return response_telegrams
 
-    async def move(self, final_state, interval=None):
+    async def move(self, final_state: str, interval: None | float = None) -> None:
         """Simulates a movement for X seconds, then changes state"""
 
         if self.mode == 1:  # Standard motion
@@ -368,13 +373,16 @@ class MockIgusDryveController:
         elif self.mode == 6:  # homing
             self.state = "homing_being_executed"
             self.log.debug(f"Starting homing motion movement for {interval} seconds")
-            await asyncio.sleep(interval)
+            if interval is not None:
+                await asyncio.sleep(interval)
+            else:
+                await asyncio.sleep(1)
             self.current_pos = 0.0
 
         self.log.debug(f"Movement completed, now changing state to {final_state}")
         self.state = final_state
 
-    def do_start_movement(self):
+    def do_start_movement(self) -> list:
         """Start motion for given mode (based on received 6040h telegram)"""
 
         # Not sure what happens yet when motion is happening.
@@ -404,7 +412,7 @@ class MockIgusDryveController:
 
         return _response_telegrams
 
-    def interpret_write_telegram(self, telegram):
+    def interpret_write_telegram(self, telegram: tuple) -> list:
         """Breaks down what a telegram means when sent to the controller. This
         is used primarily for the mock controller to identify which methods
         to run upon receiving the telegram."""
@@ -571,9 +579,12 @@ class MockIgusDryveController:
             byte21 = (_value >> 16) & 0b11111111
             byte22 = _value >> 24
 
+            if self.cmd is None:
+                raise RuntimeError("Command is None.")
             _response = list(self.cmd[0:19])
             _response[5] = 17
             _response.extend([byte19, byte20, byte21, byte22])
 
             response_telegrams = [_response]
             return response_telegrams
+        return []
