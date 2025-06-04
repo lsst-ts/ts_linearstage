@@ -37,7 +37,7 @@ CONFIGS: list[str] = ["igus.yaml", "zaber.yaml"]
 
 STD_TIMEOUT: int = 20
 
-INDEXES: list[int] = [2, 3]
+INDEXES: list[int] = [2, 101, 102, 103]
 
 
 class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
@@ -190,7 +190,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             await self.remote.cmd_moveRelative.set_start(
                 distance=10, timeout=STD_TIMEOUT
             )
-            if self.csc.salinfo.index == 1 or self.csc.salinfo.index == 3:
+            if self.csc.salinfo.index in [101, 102, 103]:
                 await asyncio.sleep(10)
                 position = await self.assert_next_sample(
                     topic=self.remote.tel_position, flush=True
@@ -224,7 +224,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             await self.remote.cmd_moveRelative.set_start(
                 distance=10, timeout=STD_TIMEOUT
             )
-            if self.csc.salinfo.index == 1 or self.csc.salinfo.index == 3:
+            if self.csc.salinfo.index in [101, 102, 103]:
                 await asyncio.sleep(10)
                 position = await self.assert_next_sample(
                     topic=self.remote.tel_position, flush=True
