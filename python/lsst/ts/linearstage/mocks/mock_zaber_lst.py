@@ -49,7 +49,7 @@ class LinearStageServer(tcpip.OneClientReadLoopServer):
         The mock device that handles replies.
     """
 
-    def __init__(self, port: int | None, log: logging.Logger) -> None:
+    def __init__(self, port: int | None, log: logging.Logger, config: types.SimpleNamespace) -> None:
         super().__init__(
             port=port,
             host=tcpip.LOCAL_HOST,
@@ -57,7 +57,7 @@ class LinearStageServer(tcpip.OneClientReadLoopServer):
             name="Zaber Mock Server",
             terminator=b"\n",
         )
-        self.device: MockLSTV2 = MockLSTV2()
+        self.device: MockLSTV2 = MockLSTV2(address=config.daisy_chain_address)
 
     async def read_and_dispatch(self) -> None:
         """Read from the client and send a reply."""
@@ -104,9 +104,9 @@ class MockLSTV2:
         The information from each axis.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, address: int=1) -> None:
         self.identified: bool = False
-        self.address: int = 0
+        self.address: int = address
         self.id: int = wizardry.ID
         self.system_serial: int = wizardry.SYSTEM_SERIAL
         self.version: str = wizardry.VERSION
@@ -158,7 +158,7 @@ class MockLSTV2:
             The reply that was generated.
         """
         if msg == "/0 0 00":
-            return "@01 0 0 OK IDLE WR 0"
+            return f"@{self.address:02} 0 0 OK IDLE WR 0"
         msg = msg.lstrip("/")
         msg_array: list = msg.split(" ")
         msg_array[-1] = msg_array[-1].split(":")[0]
