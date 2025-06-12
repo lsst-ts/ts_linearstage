@@ -118,7 +118,7 @@ class MockLSTV2:
         self.max_word: int = wizardry.MAX_WORD
         self.position: simactuators.PointToPointActuator = (
             simactuators.PointToPointActuator(
-                min_position=0, max_position=1000000, speed=60000
+                min_position=0, max_position=100000000, speed=60000
             )
         )
         self.axes: types.SimpleNamespace = types.SimpleNamespace(
@@ -128,7 +128,7 @@ class MockLSTV2:
                 resolution=wizardry.AXIS_RESOLUTION,
                 modified=False,
                 position=simactuators.PointToPointActuator(
-                    min_position=0, max_position=1000000, speed=60000
+                    min_position=0, max_position=100000000, speed=60000
                 ),
             ),
             axis2=types.SimpleNamespace(
