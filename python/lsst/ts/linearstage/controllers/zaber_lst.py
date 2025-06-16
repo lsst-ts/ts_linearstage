@@ -139,7 +139,7 @@ class ZaberV2(Stage):
     async def connect(self) -> None:
         """Connect to the device."""
         if self.simulation_mode:
-            self.mock_server = LinearStageServer(port=0, log=self.log)
+            self.mock_server = LinearStageServer(port=0, log=self.log, config=self.config)
             await self.mock_server.start_task
             self.config.port = self.mock_server.port
         connection_call = Connection.open_tcp_async
@@ -153,10 +153,13 @@ class ZaberV2(Stage):
             self.client.checksum_enabled = False
         devices = await self.client.detect_devices_async()
         self.log.debug(f"{devices=}")
-        try:
-            self.device = devices[self.config.daisy_chain_address - 1]
-        except Exception:
-            raise RuntimeError("Device is not set.")
+        if self.simulation_mode:
+            self.device = devices[0]
+        else:
+            try:
+                self.device = devices[self.config.daisy_chain_address - 1]
+            except Exception:
+                raise RuntimeError("Device is not set.")
         self.log.debug(f"{self.device=}")
         self._check_axes()
         if self.device is not None:

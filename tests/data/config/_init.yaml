@@ -2,15 +2,6 @@
 # Date created: 2020-11-13
 # Description: Updated v1 version to v2 format. This is a serial port (USB) connection.
 instances:
-  - sal_index: 1
-    target_position_minimum: 5
-    target_position_maximum: 70
-    stage_type: Zaber
-    stage_config:
-      serial_port: /dev/ttyLinearStage1
-      steps_per_mm: 8000
-      daisy_chain_address: 1
-
   - sal_index: 2
     target_position_minimum: 5
     target_position_maximum: 70
@@ -26,13 +17,40 @@ instances:
       motion_speed: 50
       motion_acceleration: 20
 
-  - sal_index: 3
-    target_position_minimum: 5
-    target_position_maximum: 70
+  - sal_index: 101
     stage_type: ZaberV2
     stage_config:
-      hostname: localhost
-      port: 11421
       daisy_chain_address: 1
-      stage_name: simulation
+      stage_name: X-MCC4
+      hostname: "localhost"
+      port: 4001
+    target_position_minimum: 0
+    target_position_maximum: 25
+  - sal_index: 102
+    stage_type: ZaberV2
+    stage_config: 
+      daisy_chain_address: 2 
+      stage_name: LEDSelector
+      hostname: "localhost"
+      port: 4001
+    target_position_minimum: 0
+    target_position_maximum: 300
+  - sal_index: 103
+    stage_type: ZaberV2
+    stage_config:
+      daisy_chain_address: 3
+      stage_name: VerticalSelector
+      hostname: "localhost"
+      port: 4001
+    target_position_minimum: 0
+    target_position_maximum: 150
+  - sal_index: 104
+    stage_type: ZaberV2
+    stage_config:
+      daisy_chain_address: 4
+      stage_name: LEDFocus
+      hostname: "localhost"
+      port: 4001
+    target_position_minimum: 0
+    target_position_maximum: 50
 
