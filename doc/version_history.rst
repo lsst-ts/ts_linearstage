@@ -1,3 +1,38 @@
+v2.3.0 (2025-07-14)
+===================
+
+New Features
+------------
+
+- Added angle device support. (`DM-50241 <https://rubinobs.atlassian.net//browse/DM-50241>`_)
+- Added retry loop to ZaberV2. (`DM-50241 <https://rubinobs.atlassian.net//browse/DM-50241>`_)
+- Added getting home information from stage when connecting so that no unnecessary homes are performed. (`DM-50639 <https://rubinobs.atlassian.net//browse/DM-50639>`_)
+
+
+Bug Fixes
+---------
+
+- Added missing stop method to Zaber stage. (`DM-50639 <https://rubinobs.atlassian.net//browse/DM-50639>`_)
+
+
+Performance Enhancement
+-----------------------
+
+- Improved simulation mode to better match hardware. (`OSW-495 <https://rubinobs.atlassian.net//browse/OSW-495>`_)
+
+
+API Removal or Deprecation
+--------------------------
+
+- Deprecated ZaberV1 code. (`DM-50639 <https://rubinobs.atlassian.net//browse/DM-50639>`_)
+
+
+Other Changes and Additions
+---------------------------
+
+- Added type hints to support mypy. (`DM-50639 <https://rubinobs.atlassian.net//browse/DM-50639>`_)
+
+
 v2.2.0 (2025-03-24)
 ===================
 

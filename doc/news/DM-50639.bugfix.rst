@@ -1,1 +1,0 @@
-Added missing stop method to Zaber stage.
