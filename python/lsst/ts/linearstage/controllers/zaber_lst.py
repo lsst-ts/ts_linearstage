@@ -208,7 +208,7 @@ class ZaberV2(Stage):
                     command_name=command_name,
                     axis=axis,
                     position=value,
-                    units=Units.ANGLE_DEGREES,
+                    unit=Units.ANGLE_DEGREES,
                 )
             case _:
                 raise RuntimeError(f"{axis.axis_type} is not supported.")
