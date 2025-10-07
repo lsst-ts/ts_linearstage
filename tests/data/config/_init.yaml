@@ -24,6 +24,7 @@ instances:
       stage_name: X-MCC4
       hostname: "localhost"
       port: 4001
+      serial_number: 115313
     target_position_minimum: 0
     target_position_maximum: 25
   - sal_index: 102
@@ -33,6 +34,7 @@ instances:
       stage_name: LEDSelector
       hostname: "localhost"
       port: 4001
+      serial_number: 115746
     target_position_minimum: 0
     target_position_maximum: 300
   - sal_index: 103
@@ -42,15 +44,18 @@ instances:
       stage_name: VerticalSelector
       hostname: "localhost"
       port: 4001
+      serial_number: 122462
     target_position_minimum: 0
     target_position_maximum: 150
   - sal_index: 104
     stage_type: ZaberV2
     stage_config:
       daisy_chain_address: 4
-      stage_name: LEDFocus
+      stage_name: LaserFocus
       hostname: "localhost"
       port: 4001
+      serial_number: 139265
     target_position_minimum: 0
     target_position_maximum: 50
+    
 

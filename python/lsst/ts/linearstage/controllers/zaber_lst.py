@@ -309,11 +309,14 @@ class ZaberV2(Stage):
                 type: integer
             stage_name:
                 type: string
+            serial_number:
+                type: integer
         required:
             - hostname
             - port
             - daisy_chain_address
             - stage_name
+            - serial_number
         additionalProperties: false
         """
         return yaml.safe_load(config_schema)
