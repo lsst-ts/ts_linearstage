@@ -29,9 +29,7 @@ from lsst.ts.linearstage.csc import LinearStageCSC
 from lsst.ts.xml.enums.LinearStage import DetailedState
 from parameterized import parameterized
 
-TEST_CONFIG_DIR: pathlib.Path = (
-    pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
-)
+TEST_CONFIG_DIR: pathlib.Path = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
 
 CONFIGS: list[str] = ["igus.yaml", "zaber.yaml"]
 
@@ -58,9 +56,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
         )
 
     async def test_bin_script(self) -> None:
-        await self.check_bin_script(
-            name="LinearStage", exe_name="run_linearstage", index=1
-        )
+        await self.check_bin_script(name="LinearStage", exe_name="run_linearstage", index=1)
 
     @parameterized.expand(INDEXES)
     async def test_standard_state_transitions(self, index: int) -> None:
@@ -97,26 +93,14 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             simulation_mode=1,
             config_dir=TEST_CONFIG_DIR,
         ):
-            position_topic = await self.assert_next_sample(
-                topic=self.remote.tel_position, flush=True
-            )
+            position_topic = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
             if self.csc.salinfo.index == 2:
-                if (
-                    self.csc.salinfo.component_info.topics["tel_position"]
-                    .fields["position"]
-                    .count
-                    == 1
-                ):
+                if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
                     assert position_topic.position == pytest.approx(1.2)
                 else:
                     assert position_topic.position == pytest.approx([1.2])
             else:
-                if (
-                    self.csc.salinfo.component_info.topics["tel_position"]
-                    .fields["position"]
-                    .count
-                    == 1
-                ):
+                if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
                     assert position_topic.position == pytest.approx(0)
                 else:
                     assert position_topic.position == pytest.approx([0])
@@ -164,15 +148,8 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                 detailedState=DetailedState.NOTMOVINGSTATE,
             )
             await asyncio.sleep(10)
-            position = await self.assert_next_sample(
-                topic=self.remote.tel_position, flush=True
-            )
-            if (
-                self.csc.salinfo.component_info.topics["tel_position"]
-                .fields["position"]
-                .count
-                == 1
-            ):
+            position = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
+            if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
                 assert position.position == pytest.approx(10, rel=1.5e-6)
             else:
                 assert position.position == pytest.approx([10], rel=1.5e-6)
@@ -187,20 +164,11 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
         ):
             await self.remote.cmd_start.set_start()
             await self.remote.cmd_enable.set_start()
-            await self.remote.cmd_moveRelative.set_start(
-                distance=10, timeout=STD_TIMEOUT
-            )
+            await self.remote.cmd_moveRelative.set_start(distance=10, timeout=STD_TIMEOUT)
             if self.csc.salinfo.index in [101, 102, 103]:
                 await asyncio.sleep(10)
-                position = await self.assert_next_sample(
-                    topic=self.remote.tel_position, flush=True
-                )
-                if (
-                    self.csc.salinfo.component_info.topics["tel_position"]
-                    .fields["position"]
-                    .count
-                    == 1
-                ):
+                position = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
+                if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
                     assert position.position == pytest.approx(10, rel=1.2e-6)
                 else:
                     assert position.position == pytest.approx([10], rel=1.2e-6)
@@ -209,45 +177,22 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                 # what
                 # behavior should be. So just going to handle this
                 # specially.
-                posit = await self.assert_next_sample(
-                    topic=self.remote.tel_position, flush=True
-                )
-                if (
-                    self.csc.salinfo.component_info.topics["tel_position"]
-                    .fields["position"]
-                    .count
-                    == 1
-                ):
+                posit = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
+                if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
                     assert posit.position == pytest.approx(11.2, abs=0.05)
                 else:
                     assert posit.position == pytest.approx([11.2], abs=0.05)
-            await self.remote.cmd_moveRelative.set_start(
-                distance=10, timeout=STD_TIMEOUT
-            )
+            await self.remote.cmd_moveRelative.set_start(distance=10, timeout=STD_TIMEOUT)
             if self.csc.salinfo.index in [101, 102, 103]:
                 await asyncio.sleep(10)
-                position = await self.assert_next_sample(
-                    topic=self.remote.tel_position, flush=True
-                )
-                if (
-                    self.csc.salinfo.component_info.topics["tel_position"]
-                    .fields["position"]
-                    .count
-                    == 1
-                ):
+                position = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
+                if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
                     assert position.position == pytest.approx(20, rel=1.2e-6)
                 else:
                     assert position.position == pytest.approx([20], rel=1.2e-6)
             else:
-                posit = await self.assert_next_sample(
-                    topic=self.remote.tel_position, flush=True
-                )
-                if (
-                    self.csc.salinfo.component_info.topics["tel_position"]
-                    .fields["position"]
-                    .count
-                    == 1
-                ):
+                posit = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
+                if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
                     assert posit.position == pytest.approx(21.2, abs=0.05)
                 else:
                     assert posit.position == pytest.approx([21.2], abs=0.05)

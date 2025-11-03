@@ -104,7 +104,7 @@ class MockLSTV2:
         The information from each axis.
     """
 
-    def __init__(self, address: int=1) -> None:
+    def __init__(self, address: int = 1) -> None:
         self.identified: bool = False
         self.address: int = address
         self.id: int = wizardry.ID
@@ -116,10 +116,8 @@ class MockLSTV2:
         self.message_id: int | None = None
         self.max_packet: int = wizardry.MAX_PACKET
         self.max_word: int = wizardry.MAX_WORD
-        self.position: simactuators.PointToPointActuator = (
-            simactuators.PointToPointActuator(
-                min_position=0, max_position=100000000, speed=60000
-            )
+        self.position: simactuators.PointToPointActuator = simactuators.PointToPointActuator(
+            min_position=0, max_position=100000000, speed=60000
         )
         self.axes: types.SimpleNamespace = types.SimpleNamespace(
             axis1=types.SimpleNamespace(
@@ -131,15 +129,9 @@ class MockLSTV2:
                     min_position=0, max_position=100000000, speed=60000
                 ),
             ),
-            axis2=types.SimpleNamespace(
-                address=2, id=0, resolution="NA", modified=False
-            ),
-            axis3=types.SimpleNamespace(
-                address=3, id=0, resolution="NA", modified=False
-            ),
-            axis4=types.SimpleNamespace(
-                address=4, id=0, resolution="NA", modified=False
-            ),
+            axis2=types.SimpleNamespace(address=2, id=0, resolution="NA", modified=False),
+            axis3=types.SimpleNamespace(address=3, id=0, resolution="NA", modified=False),
+            axis4=types.SimpleNamespace(address=4, id=0, resolution="NA", modified=False),
         )
         self.homed = False
         self.log = logging.getLogger(__name__)
@@ -203,9 +195,7 @@ class MockLSTV2:
         axis_address = int(kwargs["axis_id"])
         if axis_address != 0:
             axis = getattr(self.axes, f"axis{axis_address}")
-        response = (
-            f"@{device_address:02} {axis_address} {self.message_id:02} OK IDLE -- "
-        )
+        response = f"@{device_address:02} {axis_address} {self.message_id:02} OK IDLE -- "
         match field:
             case "deviceid":
                 return response + f"{self.id}"
@@ -249,9 +239,7 @@ class MockLSTV2:
         field = kwargs["parameters"]
         device_address = int(kwargs["device_id"])
         axis_address = int(kwargs["axis_id"])
-        response = (
-            f"@{device_address:02} {axis_address} {self.message_id:02} RJ IDLE -- "
-        )
+        response = f"@{device_address:02} {axis_address} {self.message_id:02} RJ IDLE -- "
 
         def do_get() -> str:
             """Perform the storage get command."""
@@ -286,9 +274,7 @@ class MockLSTV2:
         field = kwargs["parameters"]
         device_address = int(kwargs["device_id"])
         axis_address = int(kwargs["axis_id"])
-        response = (
-            f"@{device_address:02} {axis_address} {self.message_id:02} OK IDLE -- "
-        )
+        response = f"@{device_address:02} {axis_address} {self.message_id:02} OK IDLE -- "
         match field:
             case "disable":
                 return response + "0"
@@ -301,9 +287,7 @@ class MockLSTV2:
         """Perform the home command."""
         device_address = int(kwargs["device_id"])
         axis_address = int(kwargs["axis_id"])
-        response = (
-            f"@{device_address:02} {axis_address} {self.message_id:02} OK IDLE -- "
-        )
+        response = f"@{device_address:02} {axis_address} {self.message_id:02} OK IDLE -- "
         self.homed = True
         return response + "0"
 
@@ -313,9 +297,7 @@ class MockLSTV2:
         device_address = int(kwargs["device_id"])
         axis_address = int(kwargs["axis_id"])
         axis = getattr(self.axes, f"axis{axis_address}")
-        response = (
-            f"@{device_address:02} {axis_address} {self.message_id:02} OK IDLE -- "
-        )
+        response = f"@{device_address:02} {axis_address} {self.message_id:02} OK IDLE -- "
 
         def do_rel() -> str:
             """Perform the move rel command."""
@@ -346,9 +328,7 @@ class MockLSTV2:
             status = "BUSY"
         else:
             status = "IDLE"
-        response = (
-            f"@{device_address:02} {axis_address} {self.message_id:02} OK {status} -- "
-        )
+        response = f"@{device_address:02} {axis_address} {self.message_id:02} OK {status} -- "
         return response + "0"
 
     def do_warnings(self, **kwargs: typing.Any) -> str:
