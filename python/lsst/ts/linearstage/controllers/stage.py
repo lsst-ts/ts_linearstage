@@ -49,9 +49,7 @@ class Stage(ABC):
         Is the stage in simulation mode?
     """
 
-    def __init__(
-        self, config: types.SimpleNamespace, log: logging.Logger, simulation_mode: int
-    ) -> None:
+    def __init__(self, config: types.SimpleNamespace, log: logging.Logger, simulation_mode: int) -> None:
         self.config: types.SimpleNamespace = config
         self.log: logging.Logger = log
         self.simulation_mode: int = simulation_mode

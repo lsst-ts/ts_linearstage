@@ -30,9 +30,7 @@ logger = logging.getLogger(__name__)
 _STD_TIMEOUT = 5  # seconds
 
 
-async def read_telegram(
-    reader: asyncio.StreamReader, timeout: float = _STD_TIMEOUT
-) -> list:
+async def read_telegram(reader: asyncio.StreamReader, timeout: float = _STD_TIMEOUT) -> list:
     """Reads a telegram from the igus controller.
 
     This is required because it sends packets of different lengths
@@ -102,9 +100,7 @@ def derive_handshake(telegram: tuple | None) -> tuple | None:
     elif telegram is telegrams_write["status_request"]:
         return None
     else:
-        raise KeyError(
-            "Telegram type not recognized, cannot derive expected handshake."
-        )
+        raise KeyError("Telegram type not recognized, cannot derive expected handshake.")
 
     return configured_handshake
 
@@ -169,10 +165,7 @@ def interpret_read_telegram(telegram: tuple, mode: int) -> str:
             msg = msg + (msg_piece)
         elif telegram[19] == 64:
             # 8 is 1000000
-            msg_piece = (
-                f"\n Interpreted as 6041h, byte 19 [{telegram[19]}] says switch on disabled, "
-                ""
-            )
+            msg_piece = f"\n Interpreted as 6041h, byte 19 [{telegram[19]}] says switch on disabled, "
             logger.debug(msg_piece)
             msg = msg + (msg_piece)
 
@@ -180,9 +173,7 @@ def interpret_read_telegram(telegram: tuple, mode: int) -> str:
         if mode == 6:
             msg = msg + (f"\n Currently in homing mode [{mode}]")
             if telegram[20] == 2:  # 01
-                msg = msg + (
-                    f"\n Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled"
-                )
+                msg = msg + (f"\n Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled")
             elif telegram[20] == 22:  # 10110 (bits 12, 11, 10, 9, 8 on the right)
                 # homing executed successfully sets bits 10 and 12 high
                 msg = msg + (
@@ -191,23 +182,13 @@ def interpret_read_telegram(telegram: tuple, mode: int) -> str:
                 )
             elif telegram[20] == 34:  # 100010 (bits 13, 12, 11, 10, 9, 8 on the right)
                 # homing executed successfully sets bits 10 and 12 high
-                msg = msg + (
-                    f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled, "
-                    f"... unsure"
-                )
+                msg = msg + (f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled, ... unsure")
             else:
-                msg = (
-                    msg
-                    + f"Could not interpret byte 20 [{telegram[20]}], for homing mode {mode}"
-                )
+                msg = msg + f"Could not interpret byte 20 [{telegram[20]}], for homing mode {mode}"
         if mode == 0 or mode == 1:
-            msg = msg + (
-                f"Currently in mode ({mode}). 1 = Profile Position Mode, 0 = no mode assigned"
-            )
+            msg = msg + (f"Currently in mode ({mode}). 1 = Profile Position Mode, 0 = no mode assigned")
             if telegram[20] == 2:  # 01
-                msg = msg + (
-                    f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled"
-                )
+                msg = msg + (f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled")
             elif telegram[20] == 4:  # 100
                 msg = msg + (
                     f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: Target Reached"
@@ -217,8 +198,7 @@ def interpret_read_telegram(telegram: tuple, mode: int) -> str:
                 )
             elif telegram[20] == 6:  # 110
                 msg = msg + (
-                    f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled, "
-                    f"Target Reached"
+                    f"Interpreted as 6041h, byte 20 [{telegram[20]}] gives: DI7 enabled, Target Reached"
                 )
             elif telegram[20] == 18:  # 10010
                 msg = msg + (
@@ -226,10 +206,7 @@ def interpret_read_telegram(telegram: tuple, mode: int) -> str:
                     f"Target NOT Reached, setpoint applied."
                 )
             else:
-                msg = (
-                    msg
-                    + f"Could not interpret byte 20 [{telegram[20]}] in mode {mode}."
-                )
+                msg = msg + f"Could not interpret byte 20 [{telegram[20]}] in mode {mode}."
     # Check to make sure that there is something new to add
     if "Interpreted" not in msg:
         msg = f"\n The following telegram could not be interpreted: \n {telegram}"

@@ -83,13 +83,9 @@ class Igus(Stage):
 
     """
 
-    def __init__(
-        self, config: types.SimpleNamespace, simulation_mode: int, log: logging.Logger
-    ) -> None:
+    def __init__(self, config: types.SimpleNamespace, simulation_mode: int, log: logging.Logger) -> None:
         super().__init__(config=config, simulation_mode=simulation_mode, log=log)
-        self.mock_ctrl: MockIgusDryveController | None = (
-            None  # mock controller, or None of not constructed
-        )
+        self.mock_ctrl: MockIgusDryveController | None = None  # mock controller, or None of not constructed
         # Task that waits while connecting to the TCP/IP controller.
         self.connect_task: asyncio.Task = utils.make_done_future()
         # FIXME DM-45058 Convert to a tcpip.Client
@@ -103,9 +99,7 @@ class Igus(Stage):
         self.homed: bool = False
         self.axes: list[int] = [1]
 
-        self.log.debug(
-            f"Initialized IgusLinearStageStepper, simulation mode is {self.simulation_mode}"
-        )
+        self.log.debug(f"Initialized IgusLinearStageStepper, simulation mode is {self.simulation_mode}")
 
     async def connect(self) -> None:
         """Connect to the Igus Dryve controller's TCP/IP port.
@@ -125,19 +119,14 @@ class Igus(Stage):
             due to DI7 not being in the enabled state.
         """
 
-        self.log.debug(
-            f"Connecting to Igus Dryve, simulation is {bool(self.simulation_mode)}"
-        )
+        self.log.debug(f"Connecting to Igus Dryve, simulation is {bool(self.simulation_mode)}")
         if self.connected:
             raise RuntimeError("Already connected")
 
         if self.simulation_mode == 1:
             # Handle issue where ports lower than 1024 are protected and
             # can't be bound.
-            self.log.info(
-                "In simulation, so must set port for TCP/IP "
-                "connection to be auto selected."
-            )
+            self.log.info("In simulation, so must set port for TCP/IP connection to be auto selected.")
             self.config.socket_port = 0
             await self.start_mock_ctrl()
             host: str = _LOCAL_HOST
@@ -147,9 +136,7 @@ class Igus(Stage):
             async with self.cmd_lock:
                 if self.simulation_mode != 0:
                     if self.mock_ctrl is None:
-                        raise RuntimeError(
-                            "In simulation mode but no mock controller found."
-                        )
+                        raise RuntimeError("In simulation mode but no mock controller found.")
                 port: int = self.config.socket_port
                 connect_coro: typing.Coroutine[
                     typing.Any,
@@ -223,12 +210,8 @@ class Igus(Stage):
         port = self.config.socket_port
         host = _LOCAL_HOST
         self.mock_ctrl = MockIgusDryveController(port=port, host=host, log=self.log)
-        server_host, server_port = await asyncio.wait_for(
-            self.mock_ctrl.start(), timeout=2
-        )
-        self.log.debug(
-            f"Started Mock TCP/IP Server on host {server_host} and port {server_port}."
-        )
+        server_host, server_port = await asyncio.wait_for(self.mock_ctrl.start(), timeout=2)
+        self.log.debug(f"Started Mock TCP/IP Server on host {server_host} and port {server_port}.")
         self.config.socket_port = server_port
 
     async def stop_mock_ctrl(self) -> None:
@@ -253,9 +236,7 @@ class Igus(Stage):
         # Enable the motor
         # first send shutdown
         self.log.debug("From enable_motor, sending Shutdown")
-        await self.send_telegram(
-            telegrams_write["shutdown"], return_response=False, check_handshake=True
-        )
+        await self.send_telegram(telegrams_write["shutdown"], return_response=False, check_handshake=True)
         await self.poll_until_result(
             [telegrams_read["ready_to_switch_on"]],  # byte20=6
         )
@@ -289,9 +270,7 @@ class Igus(Stage):
 
         # Disable the motor
         self.log.debug("From enable_motor, sending Shutdown")
-        await self.send_telegram(
-            telegrams_write["shutdown"], return_response=False, check_handshake=True
-        )
+        await self.send_telegram(telegrams_write["shutdown"], return_response=False, check_handshake=True)
         await self.poll_until_result([telegrams_read["ready_to_switch_on"]])
 
     async def set_drive_settings(self) -> None:
@@ -327,7 +306,7 @@ class Igus(Stage):
             # Catch this here because diagnosing the error is tough
             raise NotImplementedError(
                 f"Value for given for feed constant of {self.config.feed_rate}"
-                f" exceeds limit of {(2 ** 16) / _multi_factor}"
+                f" exceeds limit of {(2**16) / _multi_factor}"
             )
         # FIXME DM-45058 Add to wizardry.py
         byte19: int = _feed_constant & 0b11111111
@@ -375,14 +354,12 @@ class Igus(Stage):
         # for a switch
         # This needs to be in RPM, but the config file
         # (and self.config.feed_constant) is in mm/s
-        _homing_speed_rpm = round(
-            self.config.homing_speed / self.config.feed_rate * 60 * _multi_factor
-        )
+        _homing_speed_rpm = round(self.config.homing_speed / self.config.feed_rate * 60 * _multi_factor)
         if _homing_speed_rpm > 2**16:
             # Catch this here because diagnosing the error is tough
             raise NotImplementedError(
                 f"Value for given for feed constant of {self.config.homing_speed}"
-                f" exceeds limit of {(2 ** 16) / self.config.feed_rate * 60 * _multi_factor}"
+                f" exceeds limit of {(2**16) / self.config.feed_rate * 60 * _multi_factor}"
             )
         # FIXME DM-45058 Add to wizardry.py
         byte19 = _homing_speed_rpm & 0b11111111
@@ -411,9 +388,7 @@ class Igus(Stage):
             byte19,
             byte20,
         )
-        self.log.debug(
-            f"About to send 6099h_01h, homing switch speed telegram of {telegram}"
-        )
+        self.log.debug(f"About to send 6099h_01h, homing switch speed telegram of {telegram}")
         await self.send_telegram(telegram, return_response=False, check_handshake=True)
 
         # 6099h_02h Homing speeds Zero --> Speed at which it searches for zero
@@ -445,19 +420,13 @@ class Igus(Stage):
             byte19,
             byte20,
         )
-        self.log.debug(
-            f"About to send 6099h_02h, homing speed zero telegram of {telegram}"
-        )
+        self.log.debug(f"About to send 6099h_02h, homing speed zero telegram of {telegram}")
         await self.send_telegram(telegram, return_response=False, check_handshake=True)
 
         # 609Ah Homing acceleration
         # Needs to be in rpm/min^2
         _homing_accel_rpm = round(
-            self.config.homing_acceleration
-            / self.config.feed_rate
-            * 60
-            * 60
-            * _multi_factor
+            self.config.homing_acceleration / self.config.feed_rate * 60 * 60 * _multi_factor
         )
 
         # FIXME DM-45058 Add to wizardry.py
@@ -505,7 +474,7 @@ class Igus(Stage):
             # Catch this here because diagnosing the error is tough
             raise NotImplementedError(
                 f"Value for given for feed constant of {self.config.motion_speed}"
-                f" exceeds limit of {(2 ** 16) / self.config.feed_constant * 60 * _multi_factor}"
+                f" exceeds limit of {(2**16) / self.config.feed_constant * 60 * _multi_factor}"
             )
         # FIXME DM-45058 Add to wizardry.py
         byte19 = _motion_speed_rpm & 0b11111111
@@ -646,19 +615,13 @@ class Igus(Stage):
                     # Now check if byte19 and byte20 are satisfied
                     if len(result) >= 19 + 1:
                         #
-                        b19_isTrue = (
-                            True if ((receipt[19] & _byte19) == receipt[19]) else False
-                        )
+                        b19_isTrue = True if ((receipt[19] & _byte19) == receipt[19]) else False
                         if len(result) == 19 + 1 and b19_isTrue:
                             # Status is only 19 characters and is the
                             # same, can break
                             break
                         elif len(result) >= 20 + 1:
-                            b20_isTrue = (
-                                True
-                                if ((receipt[20] & _byte20) == receipt[20])
-                                else False
-                            )
+                            b20_isTrue = True if ((receipt[20] & _byte20) == receipt[20]) else False
                             if b19_isTrue and b20_isTrue:
                                 # All bits satisfied, Can break
                                 break
@@ -711,9 +674,7 @@ class Igus(Stage):
         dist_to_target = np.abs(target - self.position[0])
 
         # Calculate Distance to get to maximum speed
-        dist_to_max_v = self.config.motion_speed**2 / (
-            2 * self.config.motion_acceleration
-        )
+        dist_to_max_v = self.config.motion_speed**2 / (2 * self.config.motion_acceleration)
 
         # Consider case where maximum velocity is never reached
         # So will be accelerating and decelerating only
@@ -721,17 +682,12 @@ class Igus(Stage):
             # Time accelerating for half the distance to the target would be
             # sqrt(2*(dist_to_target/2)/self.config.motion_acceleration)
             # but we simplify this and account for both accel and decel
-            estimated_time = 2 * np.sqrt(
-                dist_to_target / self.config.motion_acceleration
-            )
+            estimated_time = 2 * np.sqrt(dist_to_target / self.config.motion_acceleration)
         else:
             # Max velocity will be reached
-            time_to_accelerate = np.sqrt(
-                2 * dist_to_max_v / self.config.motion_acceleration
-            )
+            time_to_accelerate = np.sqrt(2 * dist_to_max_v / self.config.motion_acceleration)
             estimated_time = (
-                2 * time_to_accelerate
-                + (dist_to_target - 2 * dist_to_max_v) / self.config.motion_speed
+                2 * time_to_accelerate + (dist_to_target - 2 * dist_to_max_v) / self.config.motion_speed
             )
 
         self.log.info(f"Estimated time to target is {estimated_time:0.3f} seconds.")
@@ -806,9 +762,7 @@ class Igus(Stage):
             byte22,
         )
 
-        await self.send_telegram(
-            _telegram, check_handshake=True, return_response=False, timeout=2
-        )
+        await self.send_telegram(_telegram, check_handshake=True, return_response=False, timeout=2)
         # reset the start bit
         await self.send_telegram(telegrams_write["enable_operation"])
         # start motion
@@ -817,9 +771,7 @@ class Igus(Stage):
         await self.send_telegram(telegrams_write["start_motion"])
         # Now poll until target is reached
         # FIXME DM-45058 Add to wizardry.py
-        await self.poll_until_result(
-            [telegrams_read["target_reached"]], timeout=movement_time + 5.0
-        )
+        await self.poll_until_result([telegrams_read["target_reached"]], timeout=movement_time + 5.0)
 
     async def move_relative(self, value: float, axis: int) -> None:
         """This method moves the linear stage relative to the current position.
@@ -885,9 +837,7 @@ class Igus(Stage):
             self.mode_num,
         )
 
-        await self.send_telegram(
-            _telegram, check_handshake=True, return_response=False, timeout=2
-        )
+        await self.send_telegram(_telegram, check_handshake=True, return_response=False, timeout=2)
         expected_result = (
             0,
             0,
@@ -928,8 +878,7 @@ class Igus(Stage):
 
         # if *not* in one of these status then raise an error
         if not (
-            (_status == telegrams_read["operation_enabled"])
-            or (_status == telegrams_read["target_reached"])
+            (_status == telegrams_read["operation_enabled"]) or (_status == telegrams_read["target_reached"])
         ):
             raise RuntimeError(
                 f"Igus stage status is incorrect. Must be "
@@ -951,9 +900,7 @@ class Igus(Stage):
         # start motion
         self.log.debug("Starting motion")
         await self.send_telegram(telegrams_write["start_motion"])
-        await self.poll_until_result(
-            [telegrams_read["target_reached"]], timeout=self.config.homing_timeout
-        )
+        await self.poll_until_result([telegrams_read["target_reached"]], timeout=self.config.homing_timeout)
         # set position profiling mode (1 on byte 19)
         await self.set_mode("position")
         self.homed = True
@@ -974,9 +921,7 @@ class Igus(Stage):
         # Get encoder position from 6064h
         # how do you know what this is?
         self.log.debug("Sending get_position telegram")
-        response_telegram = await self.send_telegram(
-            telegrams_write["get_position"], check_handshake=False
-        )
+        response_telegram = await self.send_telegram(telegrams_write["get_position"], check_handshake=False)
         if response_telegram is None:
             raise RuntimeError("No response received.")
 

@@ -126,9 +126,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         stage_config = types.SimpleNamespace(**stage_config_dict)
 
         # Instantiate the class specific to the hardware component
-        self.component = stage_class(
-            config=stage_config, simulation_mode=self.simulation_mode, log=self.log
-        )
+        self.component = stage_class(config=stage_config, simulation_mode=self.simulation_mode, log=self.log)
 
     @property
     def detailed_state(self) -> DetailedState:
@@ -161,9 +159,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         # Stage must be homed/referenced before attempting
         # an absolute positioning
         if not self.referenced:
-            raise salobj.ExpectedError(
-                "Stage not homed. Perform homing prior to running this method"
-            )
+            raise salobj.ExpectedError("Stage not homed. Perform homing prior to running this method")
 
     def assert_notmoving(self, action: str) -> None:
         """Is the action happening while not moving.
@@ -183,9 +179,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                 f"DetailedState is MOVINGSTATE, {action} not allowed in state {self.detailed_state}"
             )
 
-    def assert_target_in_range(
-        self, target_value: float, move_type: str, axis: int
-    ) -> None:
+    def assert_target_in_range(self, target_value: float, move_type: str, axis: int) -> None:
         """Is the target out of range?
 
         Parameters
@@ -204,19 +198,12 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         """
         assert self.component is not None
         if move_type == "relative":
-            if (
-                self.salinfo.component_info.topics["tel_position"]
-                .fields["position"]
-                .count
-                == 1
-            ):
+            if self.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
                 target_value = target_value + self.component.position[0]
             else:
                 target_value = target_value + self.component.position[axis]
 
-        if (target_value > self.target_position_maximum) or (
-            target_value < self.target_position_minimum
-        ):
+        if (target_value > self.target_position_maximum) or (target_value < self.target_position_minimum):
             raise salobj.ExpectedError(
                 f"Commanded {move_type} target position is not in the "
                 f"permitted range of {self.target_position_minimum} to"
@@ -226,21 +213,12 @@ class LinearStageCSC(salobj.ConfigurableCsc):
     async def telemetry(self) -> None:
         """Run the telemetry loop."""
         assert self.component is not None
-        self.log.debug(
-            f"Starting telemetry loop using interval of {self.heartbeat_interval} seconds"
-        )
+        self.log.debug(f"Starting telemetry loop using interval of {self.heartbeat_interval} seconds")
         while True:
             try:
                 await self.component.update()
-                if (
-                    self.salinfo.component_info.topics["tel_position"]
-                    .fields["position"]
-                    .count
-                    == 1
-                ):
-                    await self.tel_position.set_write(
-                        position=self.component.position[0]
-                    )
+                if self.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
+                    await self.tel_position.set_write(position=self.component.position[0])
                 else:
                     await self.tel_position.set_write(position=self.component.position)
             except Exception as e:
@@ -269,9 +247,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
                 except Exception as e:
                     err_msg = "Failed to establish connection to component"
                     self.log.exception(err_msg)
-                    await self.fault(
-                        code=ErrorCode.CONNECTION_FAILED, report=f"{err_msg}: {e}"
-                    )
+                    await self.fault(code=ErrorCode.CONNECTION_FAILED, report=f"{err_msg}: {e}")
                     return
 
             if self.telemetry_task.done():
@@ -321,9 +297,7 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.assert_notmoving("getHome")
         await self.report_detailed_state(DetailedState.MOVINGSTATE)
         try:
-            await self.cmd_getHome.ack_in_progress(
-                data, DEFAULT_DURATION * len(self.component.axes)
-            )
+            await self.cmd_getHome.ack_in_progress(data, DEFAULT_DURATION * len(self.component.axes))
             await self.component.home()
         except Exception as e:
             # reset the detailed state

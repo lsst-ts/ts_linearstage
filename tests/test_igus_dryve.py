@@ -47,9 +47,7 @@ class TestIgusLinearStageStepper(unittest.IsolatedAsyncioTestCase):
                 "motion_acceleration": 20,
             }
         )
-        self.lsc: Igus = Igus(
-            config=config, simulation_mode=True, log=logging.getLogger(__name__)
-        )
+        self.lsc: Igus = Igus(config=config, simulation_mode=True, log=logging.getLogger(__name__))
 
     async def test_connect_disconnect(self) -> None:
         await self.lsc.connect()
@@ -90,9 +88,7 @@ class TestIgusLinearStageStepper(unittest.IsolatedAsyncioTestCase):
         # Make sure it fails correctly
         telegram = (0, 0, 0, 0, 0, 15, 0, 43, 13, 0, 0, 0, 96, 65, 0, 0, 0, 0, 2, 5, 5)
         msg = interpret_read_telegram(telegram, mode)
-        self.assertTrue(
-            f"The following telegram could not be interpreted: \n {telegram}" in msg
-        )
+        self.assertTrue(f"The following telegram could not be interpreted: \n {telegram}" in msg)
 
     async def test_weird_state_handling(self) -> None:
         await self.lsc.connect()

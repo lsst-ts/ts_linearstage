@@ -65,9 +65,7 @@ class ZaberV2(Stage):
 
     """
 
-    def __init__(
-        self, config: types.SimpleNamespace, log: logging.Logger, simulation_mode: int
-    ) -> None:
+    def __init__(self, config: types.SimpleNamespace, log: logging.Logger, simulation_mode: int) -> None:
         super().__init__(config, log, simulation_mode)
         self.client: Connection | None = None
         self.mock_server: LinearStageServer | None = None
@@ -93,9 +91,7 @@ class ZaberV2(Stage):
         else:
             return self.homed
 
-    async def _perform(
-        self, command_name: str, axis: Axis, **kwargs: typing.Any
-    ) -> str | None:
+    async def _perform(self, command_name: str, axis: Axis, **kwargs: typing.Any) -> str | None:
         """Send a command to the axis.
 
         Parameters
@@ -127,9 +123,7 @@ class ZaberV2(Stage):
                 self.log.exception(f"{command_name=} rejected for {axis=}.")
                 raise
             except (RequestTimeoutException, InvalidDataException):
-                self.log.exception(
-                    f"{command_name} timed out or had invalid data... Retrying."
-                )
+                self.log.exception(f"{command_name} timed out or had invalid data... Retrying.")
                 number_of_retries += 1
                 await asyncio.sleep(5)
             else:
@@ -208,7 +202,7 @@ class ZaberV2(Stage):
                     command_name=command_name,
                     axis=axis,
                     position=value,
-                    units=Units.ANGLE_DEGREES,
+                    unit=Units.ANGLE_DEGREES,
                 )
             case _:
                 raise RuntimeError(f"{axis.axis_type} is not supported.")

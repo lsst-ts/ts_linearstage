@@ -37,7 +37,5 @@ class TestZaberLSTStage:
                 "daisy_chain_address": 1,
             }
         )
-        lsc: Zaber = Zaber(
-            config=config, simulation_mode=True, log=logging.getLogger(__name__)
-        )
+        lsc: Zaber = Zaber(config=config, simulation_mode=True, log=logging.getLogger(__name__))
         return lsc

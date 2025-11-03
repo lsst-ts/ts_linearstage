@@ -126,14 +126,10 @@ class MockIgusDryveController:
 
         Set start_task done and start the command loop.
         """
-        self.server = await asyncio.start_server(
-            self.cmd_loop, host=self.host, port=self.port
-        )
+        self.server = await asyncio.start_server(self.cmd_loop, host=self.host, port=self.port)
         if self.port == 0:
             self.port = self.server.sockets[0].getsockname()[1]
-            self.log.debug(
-                f"Started TCP/IP Server on host {self.host} and port {self.port}"
-            )
+            self.log.debug(f"Started TCP/IP Server on host {self.host} and port {self.port}")
         return self.host, self.port
 
     async def stop(self, timeout: int = 5) -> None:
@@ -146,9 +142,7 @@ class MockIgusDryveController:
         server.close()
         await asyncio.wait_for(server.wait_closed(), timeout=timeout)
 
-    async def cmd_loop(
-        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
-    ) -> None:
+    async def cmd_loop(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """Execute commands and output replies."""
         self.log.info("cmd_loop begins")
         while True:
@@ -184,9 +178,7 @@ class MockIgusDryveController:
                             outputs = func()
 
                     if outputs:
-                        self.log.debug(
-                            f"Simulated Controller will publish {len(outputs)} telegrams"
-                        )
+                        self.log.debug(f"Simulated Controller will publish {len(outputs)} telegrams")
                         count = 1
                         for output in outputs:
                             self.log.debug(
@@ -295,9 +287,7 @@ class MockIgusDryveController:
             self.state = "operation_enabled"
             return _response_telegrams
         else:
-            raise KeyError(
-                f"Current state of {self.state} does not have an appropriate response in mock."
-            )
+            raise KeyError(f"Current state of {self.state} does not have an appropriate response in mock.")
 
     def do_set_mode(self, mode: int) -> list:
         """Changes mode (based on received 6060h telegram)
@@ -354,17 +344,12 @@ class MockIgusDryveController:
             self.state = "move_being_executed"
             # Determine how long it'll take to get there
             # Just assume constant velocity and ignore accelerations
-            time_to_target = (
-                self.target_pos - self.current_pos
-            ) / self.motion_speed_mm_per_s
+            time_to_target = (self.target_pos - self.current_pos) / self.motion_speed_mm_per_s
             self.log.debug(f"Estimated time to target is {time_to_target} seconds")
             _time = 0
             if interval is None:
                 while _time < time_to_target:
-                    self.current_pos = (
-                        self.current_pos
-                        + _time / time_to_target * self.motion_speed_mm_per_s
-                    )
+                    self.current_pos = self.current_pos + _time / time_to_target * self.motion_speed_mm_per_s
                     await asyncio.sleep(1)
                     _time += 1
                 await asyncio.sleep(time_to_target)
@@ -466,9 +451,7 @@ class MockIgusDryveController:
                 # because it's hard coded intentionally.
                 shaft_revs = telegram[19]
                 assert shaft_revs == 1
-                self.log.debug(
-                    f"Set mock controller to have shaft revs of {shaft_revs} per feed constant"
-                )
+                self.log.debug(f"Set mock controller to have shaft revs of {shaft_revs} per feed constant")
             else:
                 raise KeyError(f"Got unsupported value of {telegram[14]} in byte 14")
             # can now return a handshake
@@ -503,9 +486,7 @@ class MockIgusDryveController:
         if telegram[12] == 96 and telegram[13] == 154:
             self.log.debug("Interpreted 609Ah (Homing Acceleration) telegram")
             # acceleration used when searching
-            self.homing_accel_rpm_per_min2 = (
-                telegram[21] << 16 | telegram[20] << 8 | telegram[19]
-            )
+            self.homing_accel_rpm_per_min2 = telegram[21] << 16 | telegram[20] << 8 | telegram[19]
             self.log.debug(
                 f"Set mock controller to have homing acceleration of {self.homing_accel_rpm_per_min2} "
                 f"rpm/min^2"
@@ -521,12 +502,8 @@ class MockIgusDryveController:
 
             # speed at which it searches for switch
             self.motion_speed_rpm = telegram[20] << 8 | telegram[19]
-            self.motion_speed_mm_per_s = (
-                self.motion_speed_rpm * self.feed_constant_mm_per_rot
-            )
-            self.log.debug(
-                f"Set mock controller to have motion speed of {self.motion_speed_rpm} rpm"
-            )
+            self.motion_speed_mm_per_s = self.motion_speed_rpm * self.feed_constant_mm_per_rot
+            self.log.debug(f"Set mock controller to have motion speed of {self.motion_speed_rpm} rpm")
 
             # can now return a handshake
             _response_telegrams = [derive_handshake(self.cmd)]
@@ -537,9 +514,7 @@ class MockIgusDryveController:
         if telegram[12] == 96 and telegram[13] == 131:
             self.log.debug("Interpreted 6083h (Profile Acceleration) telegram")
             # acceleration used when searching
-            self.motion_accel_rpm_per_min2 = (
-                telegram[21] << 16 | telegram[20] << 8 | telegram[19]
-            )
+            self.motion_accel_rpm_per_min2 = telegram[21] << 16 | telegram[20] << 8 | telegram[19]
             self.log.debug(
                 f"Set mock controller to have motion acceleration of {self.motion_accel_rpm_per_min2} "
                 f"rpm/min^2"
@@ -555,10 +530,7 @@ class MockIgusDryveController:
 
             # Set new target position
             self.target_pos = (
-                telegram[22] << 24
-                | telegram[21] << 16
-                | telegram[20] << 8
-                | telegram[19]
+                telegram[22] << 24 | telegram[21] << 16 | telegram[20] << 8 | telegram[19]
             ) / 100
 
             # can now return a handshake
