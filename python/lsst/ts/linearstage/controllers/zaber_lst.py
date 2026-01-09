@@ -35,6 +35,7 @@ from zaber_motion.exceptions import (
     CommandFailedException,
     InvalidDataException,
     RequestTimeoutException,
+    MotionLibException,
 )
 
 from ..enums import Move
@@ -77,10 +78,10 @@ class ZaberV2(Stage):
     @property
     def connected(self) -> bool:
         """Is the client connected?"""
-        # if client is not None assume connected since zaber=motion
-        # does not provide check for connection status.
+        # if client is not None check connection.is_open provided by
+        # zaber-motion library.
         if self.client is not None:
-            return True
+            return self.client.is_open
         else:
             return False
 
@@ -126,6 +127,12 @@ class ZaberV2(Stage):
                 self.log.exception(f"{command_name} timed out or had invalid data... Retrying.")
                 number_of_retries += 1
                 await asyncio.sleep(5)
+            except MotionLibException as mle:
+                self.log.exception(f"{command_name} had a general issue.")
+                self.log.exception(f"{mle.message=}")
+                for attr in ["device_addresses"]:
+                    if hasattr(mle, attr):
+                        self.log.exception(f"{getattr(mle, attr)}")
             else:
                 return result
         return None

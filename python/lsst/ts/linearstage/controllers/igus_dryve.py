@@ -967,7 +967,7 @@ class Igus(Stage):
         self.position[0] = await self.get_position()
         self.status = await self.retrieve_status()
 
-    def stop(self, axis: int) -> typing.NoReturn:
+    def stop(self, axis_id: int) -> typing.NoReturn:
         """Stops the movement of the stage.
         This should never need to be used since movement commands do not
         return until completed"""
