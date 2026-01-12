@@ -27,8 +27,9 @@ import logging
 import types
 import typing
 
-from lsst.ts import simactuators, tcpip
 from zaber_motion.ascii import WarningFlags
+
+from lsst.ts import simactuators, tcpip
 
 from .. import wizardry
 

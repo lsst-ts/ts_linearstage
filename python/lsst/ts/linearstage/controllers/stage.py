@@ -127,12 +127,12 @@ class Stage(ABC):
         pass
 
     @abstractmethod
-    async def stop(self, axis: int) -> None:
+    async def stop(self, axis_id: int) -> None:
         """Stop the stage.
 
         Parameters
         ----------
-        axis : `int`
+        axis_id : `int`
             The index of the axis to stop.
         """
         raise NotImplementedError

@@ -35,7 +35,6 @@ requirements:
         - python {{ python }}
         - ts-salobj
         - ts-xml
-        - zaber-serial
-        - zaber-motion =7
+        - zaber-motion >=7.9
         - ts-tcpip
         - ts-simactuators

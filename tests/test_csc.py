@@ -24,10 +24,11 @@ import pathlib
 import unittest
 
 import pytest
+from parameterized import parameterized
+
 from lsst.ts import salobj
 from lsst.ts.linearstage.csc import LinearStageCSC
 from lsst.ts.xml.enums.LinearStage import DetailedState
-from parameterized import parameterized
 
 TEST_CONFIG_DIR: pathlib.Path = pathlib.Path(__file__).parents[1].joinpath("tests", "data", "config")
 
