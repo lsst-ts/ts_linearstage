@@ -1,3 +1,13 @@
+v2.3.1 (2026-01-22)
+===================
+
+Other Changes and Additions
+---------------------------
+
+- Added python version to build string for conda package. (`OSW-1484 <https://rubinobs.atlassian.net//browse/OSW-1484>`_)
+- Added more logging information. (`OSW-1530 <https://rubinobs.atlassian.net//browse/OSW-1530>`_)
+
+
 v2.3.0 (2025-07-14)
 ===================
 
