@@ -1,0 +1,28 @@
+[workspace]
+authors = ["Eric Coughlin <ecoughlin@lsst.org>"]
+channels = ["conda-forge", "https://conda.anaconda.org/lsstts"]
+name = "ts_linearstage"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[dependencies]
+python = "3.13.*"
+ts-salobj = "8.*"
+ts-tcpip = "2.*"
+ts-utils = ">=1.2.8,<2"
+zaber-motion = "8.*"
+ts-simactuators = ">=2.2.11,<3"
+
+[feature.test.dependencies]
+pytest = "*"
+pytest-asyncio = "*"
+parameterized = ">=0.9.0,<0.10"
+
+[environments]
+test = ["test"]
+
+[pypi-dependencies]
+ts-linearstage = {path = ".", editable = true}
+
+[tasks]
+test = { cmd = "pytest -v", env = { LSST_KAFKA_BROKER_ADDR = "localhost:9092", LSST_SCHEMA_REGISTRY_URL = "http://localhost:8081" } }
