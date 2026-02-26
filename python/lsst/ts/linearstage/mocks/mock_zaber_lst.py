@@ -150,7 +150,7 @@ class MockLSTV2:
         `str`
             The reply that was generated.
         """
-        if msg == "/0 0 00":
+        if msg.startswith("/0 0"):
             return f"@{self.address:02} 0 0 OK IDLE WR 0"
         msg = msg.lstrip("/")
         msg_array: list = msg.split(" ")

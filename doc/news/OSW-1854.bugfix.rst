@@ -1,0 +1,1 @@
+Added raise to except clause so that _perform will return instead of trying again ad infinitum.

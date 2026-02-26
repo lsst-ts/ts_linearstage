@@ -32,6 +32,7 @@ from zaber_motion import Units
 from zaber_motion.ascii import Axis, AxisType, Connection, Device
 from zaber_motion.exceptions import (
     CommandFailedException,
+    DeviceAddressConflictException,
     InvalidDataException,
     MotionLibException,
     RequestTimeoutException,
@@ -134,6 +135,7 @@ class ZaberV2(Stage):
                 for attr in ["device_addresses"]:
                     if hasattr(mle, attr):
                         self.log.exception(f"{getattr(mle, attr)}")
+                raise
             else:
                 return result
         return None
@@ -153,7 +155,19 @@ class ZaberV2(Stage):
             raise RuntimeError(f"Unable to connect to host {self.config.hostname}.")
         if self.simulation_mode:
             self.client.checksum_enabled = False
-        devices = await self.client.detect_devices_async()
+        devices: None | list[Device] = None
+        for _ in range(MAX_RETRIES):
+            try:
+                devices = await self.client.detect_devices_async()
+            except DeviceAddressConflictException:
+                self.log.exception("Device address conflict detected...Attempting renumbering automatically.")
+                devices_renumbered = await self.client.renumber_devices_async()
+                self.log.info(f"{devices_renumbered=}")
+                await asyncio.sleep(1)
+            else:
+                break
+        if devices is None:
+            raise RuntimeError("Devices should not be none... Something is wrong.")
         self.log.debug(f"{devices=}")
         if self.simulation_mode:
             self.device = devices[0]
