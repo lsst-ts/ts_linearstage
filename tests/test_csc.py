@@ -95,16 +95,15 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             config_dir=TEST_CONFIG_DIR,
         ):
             position_topic = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
-            if self.csc.salinfo.index == 2:
-                if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
-                    assert position_topic.position == pytest.approx(1.2)
-                else:
-                    assert position_topic.position == pytest.approx([1.2])
-            else:
-                if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
-                    assert position_topic.position == pytest.approx(0)
-                else:
+            match self.csc.salinfo.index:
+                case 101:
+                    assert position_topic.position == pytest.approx([0, 0, 0])
+                case 102 | 103:
                     assert position_topic.position == pytest.approx([0])
+                case 2:
+                    assert position_topic.position == pytest.approx([1.2])
+                case _:
+                    raise RuntimeError("Not a valid index.")
 
     @parameterized.expand(INDEXES)
     async def test_getHome(self, index: int) -> None:
@@ -135,7 +134,10 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             with salobj.assertRaisesAckError():
                 await self.remote.cmd_moveAbsolute.set_start(distance=_dist)
             await self.remote.cmd_getHome.set_start(timeout=STD_TIMEOUT)
-            await asyncio.sleep(5)
+            await self.assert_next_sample(
+                topic=self.remote.evt_detailedState, detailedState=DetailedState.NOTMOVINGSTATE
+            )
+            await asyncio.sleep(1)
             if hasattr(self.csc.component, "mock_ctrl"):
                 # set current position in the mock
                 self.csc.component.mock_ctrl.current_pos = 0.0
@@ -143,17 +145,26 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                 # get set when homing
                 await self.csc.component.set_mode("position")
 
-            await self.remote.cmd_moveAbsolute.set_start(distance=_dist)
-            await self.assert_next_sample(
-                topic=self.remote.evt_detailedState,
-                detailedState=DetailedState.NOTMOVINGSTATE,
-            )
-            await asyncio.sleep(10)
-            position = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
-            if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
-                assert position.position == pytest.approx(10, rel=1.5e-6)
-            else:
-                assert position.position == pytest.approx([10], rel=1.5e-6)
+            match index:
+                case 101:
+                    for axis in range(3):
+                        await self.remote.cmd_moveAbsolute.set_start(distance=_dist, axis=axis)
+                        await self.assert_next_sample(
+                            topic=self.remote.evt_detailedState, detailedState=DetailedState.MOVINGSTATE
+                        )
+                        await self.assert_next_sample(
+                            topic=self.remote.evt_detailedState, detailedState=DetailedState.NOTMOVINGSTATE
+                        )
+                case 102 | 103 | 2:
+                    await self.remote.cmd_moveAbsolute.set_start(distance=_dist)
+                    await self.assert_next_sample(
+                        topic=self.remote.evt_detailedState, detailedState=DetailedState.MOVINGSTATE
+                    )
+                    await self.assert_next_sample(
+                        topic=self.remote.evt_detailedState, detailedState=DetailedState.NOTMOVINGSTATE
+                    )
+                case _:
+                    raise RuntimeError("Not a valid index.")
 
     @parameterized.expand(INDEXES)
     async def test_moveRelative(self, index: int) -> None:
@@ -165,35 +176,32 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
         ):
             await self.remote.cmd_start.set_start()
             await self.remote.cmd_enable.set_start()
+            await self.assert_next_sample(
+                topic=self.remote.evt_detailedState, detailedState=DetailedState.NOTMOVINGSTATE
+            )
             await self.remote.cmd_moveRelative.set_start(distance=10, timeout=STD_TIMEOUT)
-            if self.csc.salinfo.index in [101, 102, 103]:
-                await asyncio.sleep(10)
-                position = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
-                if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
-                    assert position.position == pytest.approx(10, rel=1.2e-6)
-                else:
+            match self.csc.salinfo.index:
+                case 101:
+                    await asyncio.sleep(7)
+                    position = await self.assert_next_sample(self.remote.tel_position, flush=True)
+                    assert position.position == pytest.approx([10, 0, 0], rel=1.2e-6)
+                    await self.remote.cmd_moveRelative.set_start(distance=10, timeout=STD_TIMEOUT)
+                    await asyncio.sleep(7)
+                    position = await self.assert_next_sample(self.remote.tel_position, flush=True)
+                    assert position.position == pytest.approx([20, 0, 0], rel=1.2e-6)
+                case 102 | 103:
+                    await asyncio.sleep(7)
+                    position = await self.assert_next_sample(self.remote.tel_position, flush=True)
                     assert position.position == pytest.approx([10], rel=1.2e-6)
-            else:
-                # Igus behaves weirdly with this method but no idea
-                # what
-                # behavior should be. So just going to handle this
-                # specially.
-                posit = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
-                if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
-                    assert posit.position == pytest.approx(11.2, abs=0.05)
-                else:
-                    assert posit.position == pytest.approx([11.2], abs=0.05)
-            await self.remote.cmd_moveRelative.set_start(distance=10, timeout=STD_TIMEOUT)
-            if self.csc.salinfo.index in [101, 102, 103]:
-                await asyncio.sleep(10)
-                position = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
-                if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
-                    assert position.position == pytest.approx(20, rel=1.2e-6)
-                else:
+                    await self.remote.cmd_moveRelative.set_start(distance=10, timeout=STD_TIMEOUT)
+                    await asyncio.sleep(7)
+                    position = await self.assert_next_sample(self.remote.tel_position, flush=True)
                     assert position.position == pytest.approx([20], rel=1.2e-6)
-            else:
-                posit = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
-                if self.csc.salinfo.component_info.topics["tel_position"].fields["position"].count == 1:
-                    assert posit.position == pytest.approx(21.2, abs=0.05)
-                else:
-                    assert posit.position == pytest.approx([21.2], abs=0.05)
+                case 2:
+                    position = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
+                    assert position.position == pytest.approx([11.2], abs=0.05)
+                    await self.remote.cmd_moveRelative.set_start(distance=10, timeout=STD_TIMEOUT)
+                    position = await self.assert_next_sample(self.remote.tel_position, flush=True)
+                    assert position.position == pytest.approx([21.2], abs=0.05)
+                case _:
+                    raise RuntimeError("Not a valid index.")
