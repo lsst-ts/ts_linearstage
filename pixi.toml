@@ -25,4 +25,4 @@ test = ["test"]
 ts-linearstage = {path = ".", editable = true}
 
 [tasks]
-test = { cmd = "pytest -v", env = { LSST_KAFKA_BROKER_ADDR = "localhost:9092", LSST_SCHEMA_REGISTRY_URL = "http://localhost:8081" } }
+test = { cmd = "pytest -v", env = { LSST_KAFKA_BROKER_ADDR = "localhost:9092", LSST_SCHEMA_REGISTRY_URL = "http://localhost:8081" }, default-environment = "test" }

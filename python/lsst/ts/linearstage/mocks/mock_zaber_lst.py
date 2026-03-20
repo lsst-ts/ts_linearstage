@@ -35,7 +35,7 @@ from .. import wizardry
 
 
 class LinearStageServer(tcpip.OneClientReadLoopServer):
-    """Implment the mock linearstage server.
+    """Implement the mock linearstage server.
 
     Parameters
     ----------
@@ -113,27 +113,69 @@ class MockLSTV2:
         self.version: str = wizardry.VERSION
         self.version_build: int = wizardry.VERSION_BUILD
         self.modified: bool = False
-        self.axis_count: int = 1
         self.message_id: int | None = None
         self.max_packet: int = wizardry.MAX_PACKET
         self.max_word: int = wizardry.MAX_WORD
         self.position: simactuators.PointToPointActuator = simactuators.PointToPointActuator(
             min_position=0, max_position=100000000, speed=60000
         )
-        self.axes: types.SimpleNamespace = types.SimpleNamespace(
-            axis1=types.SimpleNamespace(
-                address=1,
-                id=wizardry.AXIS_ID,
-                resolution=wizardry.AXIS_RESOLUTION,
-                modified=False,
-                position=simactuators.PointToPointActuator(
-                    min_position=0, max_position=100000000, speed=60000
-                ),
-            ),
-            axis2=types.SimpleNamespace(address=2, id=0, resolution="NA", modified=False),
-            axis3=types.SimpleNamespace(address=3, id=0, resolution="NA", modified=False),
-            axis4=types.SimpleNamespace(address=4, id=0, resolution="NA", modified=False),
-        )
+        self.axes: types.SimpleNamespace
+        match address:
+            case 1:
+                self.axes = types.SimpleNamespace(
+                    axis1=types.SimpleNamespace(
+                        address=1,
+                        id=wizardry.AXIS_ID,
+                        resolution=wizardry.AXIS_RESOLUTION,
+                        modified=False,
+                        position=simactuators.PointToPointActuator(
+                            min_position=0, max_position=100000000, speed=60000
+                        ),
+                    ),
+                    axis2=types.SimpleNamespace(
+                        address=2,
+                        id=wizardry.AXIS_ID,
+                        resolution=wizardry.AXIS_RESOLUTION,
+                        modified=False,
+                        position=simactuators.PointToPointActuator(
+                            min_position=0, max_position=100000000, speed=60000
+                        ),
+                    ),
+                    axis3=types.SimpleNamespace(
+                        address=3, id=0, resolution=wizardry.AXIS_RESOLUTION, modified=False
+                    ),
+                    axis4=types.SimpleNamespace(
+                        address=4,
+                        id=wizardry.AXIS_ID,
+                        resolution=wizardry.AXIS_RESOLUTION,
+                        modified=False,
+                        position=simactuators.PointToPointActuator(
+                            min_position=0, max_position=100000000, speed=60000
+                        ),
+                    ),
+                )
+            case _:
+                self.axes = types.SimpleNamespace(
+                    axis1=types.SimpleNamespace(
+                        address=1,
+                        id=wizardry.AXIS_ID,
+                        resolution=wizardry.AXIS_RESOLUTION,
+                        modified=False,
+                        position=simactuators.PointToPointActuator(
+                            min_position=0, max_position=100000000, speed=60000
+                        ),
+                    ),
+                    axis2=types.SimpleNamespace(
+                        address=2, id=0, resolution=wizardry.AXIS_RESOLUTION, modified=False
+                    ),
+                    axis3=types.SimpleNamespace(
+                        address=3, id=0, resolution=wizardry.AXIS_RESOLUTION, modified=False
+                    ),
+                    axis4=types.SimpleNamespace(
+                        address=4, id=0, resolution=wizardry.AXIS_RESOLUTION, modified=False
+                    ),
+                )
+        self.axis_count: int = len(vars(self.axes))
         self.homed = False
         self.log = logging.getLogger(__name__)
 
