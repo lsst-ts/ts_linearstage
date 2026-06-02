@@ -17,6 +17,7 @@ ts-simactuators = ">=2.2.11,<3"
 pytest = "*"
 pytest-asyncio = "*"
 parameterized = ">=0.9.0,<0.10"
+pytest-xdist = "*"
 
 [environments]
 test = ["test"]
@@ -25,4 +26,4 @@ test = ["test"]
 ts-linearstage = {path = ".", editable = true}
 
 [tasks]
-test = { cmd = "pytest -v", env = { LSST_KAFKA_BROKER_ADDR = "localhost:9092", LSST_SCHEMA_REGISTRY_URL = "http://localhost:8081" }, default-environment = "test" }
+test = { cmd = "pytest -vn logical", env = { LSST_KAFKA_BROKER_ADDR = "localhost:9092", LSST_SCHEMA_REGISTRY_URL = "http://localhost:8081" }, default-environment = "test" }

@@ -119,7 +119,8 @@ class ZaberV2(Stage):
         result: None | str = None
         while number_of_retries <= MAX_RETRIES:
             try:
-                self.log.info(f"Number {number_of_retries} of {MAX_RETRIES}")
+                if number_of_retries > 0:
+                    self.log.warning(f"Number {number_of_retries} of {MAX_RETRIES}")
                 command = getattr(axis, command_name)
                 result = await command(**kwargs)
             except CommandFailedException:

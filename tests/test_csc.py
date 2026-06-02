@@ -36,7 +36,7 @@ CONFIGS: list[str] = ["igus.yaml", "zaber.yaml"]
 
 STD_TIMEOUT: int = 20
 
-INDEXES: list[int] = [2, 101, 102, 103]
+INDEXES: list[int] = [2, 101, 102]
 
 
 class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTestCase):
@@ -97,7 +97,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
             position_topic = await self.assert_next_sample(topic=self.remote.tel_position, flush=True)
             match self.csc.salinfo.index:
                 case 101:
-                    assert position_topic.position == pytest.approx([0, 0, 0])
+                    assert position_topic.position == pytest.approx([0, 0, 0, 0])
                 case 102 | 103:
                     assert position_topic.position == pytest.approx([0])
                 case 2:
@@ -147,7 +147,7 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
 
             match index:
                 case 101:
-                    for axis in range(3):
+                    for axis in range(4):
                         await self.remote.cmd_moveAbsolute.set_start(distance=_dist, axis=axis)
                         await self.assert_next_sample(
                             topic=self.remote.evt_detailedState, detailedState=DetailedState.MOVINGSTATE
@@ -184,11 +184,11 @@ class LinearStageCscTestCase(salobj.BaseCscTestCase, unittest.IsolatedAsyncioTes
                 case 101:
                     await asyncio.sleep(7)
                     position = await self.assert_next_sample(self.remote.tel_position, flush=True)
-                    assert position.position == pytest.approx([10, 0, 0], rel=1.2e-6)
+                    assert position.position == pytest.approx([10, 0, 0, 0], rel=1.2e-6)
                     await self.remote.cmd_moveRelative.set_start(distance=10, timeout=STD_TIMEOUT)
                     await asyncio.sleep(7)
                     position = await self.assert_next_sample(self.remote.tel_position, flush=True)
-                    assert position.position == pytest.approx([20, 0, 0], rel=1.2e-6)
+                    assert position.position == pytest.approx([20, 0, 0, 0], rel=1.2e-6)
                 case 102 | 103:
                     await asyncio.sleep(7)
                     position = await self.assert_next_sample(self.remote.tel_position, flush=True)

@@ -142,7 +142,13 @@ class MockLSTV2:
                         ),
                     ),
                     axis3=types.SimpleNamespace(
-                        address=3, id=0, resolution=wizardry.AXIS_RESOLUTION, modified=False
+                        address=3,
+                        id=wizardry.AXIS_ID,
+                        resolution=wizardry.AXIS_RESOLUTION,
+                        modified=False,
+                        position=simactuators.PointToPointActuator(
+                            min_position=0, max_position=100000000, speed=60000
+                        ),
                     ),
                     axis4=types.SimpleNamespace(
                         address=4,
