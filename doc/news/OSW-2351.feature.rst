@@ -1,0 +1,1 @@
+Added ``simulation_enabled_axes`` configuration support to choose which Zaber axes are enabled in simulation mode.

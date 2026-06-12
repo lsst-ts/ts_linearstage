@@ -328,6 +328,18 @@ class ZaberV2(Stage):
                 type: string
             serial_number:
                 type: integer
+            simulation_enabled_axes:
+                description: >-
+                    One-based physical axis addresses to enable in simulation mode.
+                    This setting is ignored when not running in simulation mode.
+                type: array
+                items:
+                    type: integer
+                    minimum: 1
+                    maximum: 4
+                minItems: 1
+                maxItems: 4
+                uniqueItems: true
         required:
             - hostname
             - port
