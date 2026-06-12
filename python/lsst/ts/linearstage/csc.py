@@ -122,7 +122,10 @@ class LinearStageCSC(salobj.ConfigurableCsc):
         self.validator = salobj.DefaultingValidator(stage_class.get_config_schema())
         self.target_position_minimum = instance["target_position_minimum"]
         self.target_position_maximum = instance["target_position_maximum"]
-        stage_config_dict = self.validator.validate(instance["stage_config"])
+        stage_config_data = dict(instance["stage_config"])
+        if self.simulation_mode and "simulation_enabled_axes" in instance:
+            stage_config_data["simulation_enabled_axes"] = instance["simulation_enabled_axes"]
+        stage_config_dict = self.validator.validate(stage_config_data)
         stage_config = types.SimpleNamespace(**stage_config_dict)
 
         # Instantiate the class specific to the hardware component

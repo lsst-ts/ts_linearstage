@@ -39,6 +39,18 @@ properties:
             type: number
         target_position_maximum:
             type: number
+        simulation_enabled_axes:
+            description: >-
+                One-based physical Zaber axis addresses to enable in simulation
+                mode. This setting is ignored when not running in simulation mode.
+            type: array
+            items:
+                type: integer
+                minimum: 1
+                maximum: 4
+            minItems: 1
+            maxItems: 4
+            uniqueItems: true
         stage_type:
             type: string
             enum:

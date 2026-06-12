@@ -119,7 +119,8 @@ class ZaberV2(Stage):
         result: None | str = None
         while number_of_retries <= MAX_RETRIES:
             try:
-                self.log.info(f"Number {number_of_retries} of {MAX_RETRIES}")
+                if number_of_retries > 0:
+                    self.log.warning(f"Number {number_of_retries} of {MAX_RETRIES}")
                 command = getattr(axis, command_name)
                 result = await command(**kwargs)
             except CommandFailedException:
@@ -327,6 +328,18 @@ class ZaberV2(Stage):
                 type: string
             serial_number:
                 type: integer
+            simulation_enabled_axes:
+                description: >-
+                    One-based physical axis addresses to enable in simulation mode.
+                    This setting is ignored when not running in simulation mode.
+                type: array
+                items:
+                    type: integer
+                    minimum: 1
+                    maximum: 4
+                minItems: 1
+                maxItems: 4
+                uniqueItems: true
         required:
             - hostname
             - port

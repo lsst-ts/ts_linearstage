@@ -58,7 +58,10 @@ class LinearStageServer(tcpip.OneClientReadLoopServer):
             name="Zaber Mock Server",
             terminator=b"\n",
         )
-        self.device: MockLSTV2 = MockLSTV2(address=config.daisy_chain_address)
+        self.device: MockLSTV2 = MockLSTV2(
+            address=config.daisy_chain_address,
+            enabled_axes=getattr(config, "simulation_enabled_axes", None),
+        )
 
     async def read_and_dispatch(self) -> None:
         """Read from the client and send a reply."""
@@ -105,9 +108,12 @@ class MockLSTV2:
         The information from each axis.
     """
 
-    def __init__(self, address: int = 1) -> None:
+    def __init__(self, address: int = 1, enabled_axes: list[int] | None = None) -> None:
         self.identified: bool = False
         self.address: int = address
+        if enabled_axes is None:
+            enabled_axes = [1, 2, 3, 4] if address == 1 else [1]
+        self.enabled_axes = set(enabled_axes)
         self.id: int = wizardry.ID
         self.system_serial: int = wizardry.SYSTEM_SERIAL
         self.version: str = wizardry.VERSION
@@ -125,7 +131,7 @@ class MockLSTV2:
                 self.axes = types.SimpleNamespace(
                     axis1=types.SimpleNamespace(
                         address=1,
-                        id=wizardry.AXIS_ID,
+                        id=wizardry.AXIS_ID if 1 in self.enabled_axes else 0,
                         resolution=wizardry.AXIS_RESOLUTION,
                         modified=False,
                         position=simactuators.PointToPointActuator(
@@ -134,7 +140,7 @@ class MockLSTV2:
                     ),
                     axis2=types.SimpleNamespace(
                         address=2,
-                        id=wizardry.AXIS_ID,
+                        id=wizardry.AXIS_ID if 2 in self.enabled_axes else 0,
                         resolution=wizardry.AXIS_RESOLUTION,
                         modified=False,
                         position=simactuators.PointToPointActuator(
@@ -142,11 +148,17 @@ class MockLSTV2:
                         ),
                     ),
                     axis3=types.SimpleNamespace(
-                        address=3, id=0, resolution=wizardry.AXIS_RESOLUTION, modified=False
+                        address=3,
+                        id=wizardry.AXIS_ID if 3 in self.enabled_axes else 0,
+                        resolution=wizardry.AXIS_RESOLUTION,
+                        modified=False,
+                        position=simactuators.PointToPointActuator(
+                            min_position=0, max_position=100000000, speed=60000
+                        ),
                     ),
                     axis4=types.SimpleNamespace(
                         address=4,
-                        id=wizardry.AXIS_ID,
+                        id=wizardry.AXIS_ID if 4 in self.enabled_axes else 0,
                         resolution=wizardry.AXIS_RESOLUTION,
                         modified=False,
                         position=simactuators.PointToPointActuator(
@@ -158,7 +170,7 @@ class MockLSTV2:
                 self.axes = types.SimpleNamespace(
                     axis1=types.SimpleNamespace(
                         address=1,
-                        id=wizardry.AXIS_ID,
+                        id=wizardry.AXIS_ID if 1 in self.enabled_axes else 0,
                         resolution=wizardry.AXIS_RESOLUTION,
                         modified=False,
                         position=simactuators.PointToPointActuator(
@@ -166,13 +178,31 @@ class MockLSTV2:
                         ),
                     ),
                     axis2=types.SimpleNamespace(
-                        address=2, id=0, resolution=wizardry.AXIS_RESOLUTION, modified=False
+                        address=2,
+                        id=wizardry.AXIS_ID if 2 in self.enabled_axes else 0,
+                        resolution=wizardry.AXIS_RESOLUTION,
+                        modified=False,
+                        position=simactuators.PointToPointActuator(
+                            min_position=0, max_position=100000000, speed=60000
+                        ),
                     ),
                     axis3=types.SimpleNamespace(
-                        address=3, id=0, resolution=wizardry.AXIS_RESOLUTION, modified=False
+                        address=3,
+                        id=wizardry.AXIS_ID if 3 in self.enabled_axes else 0,
+                        resolution=wizardry.AXIS_RESOLUTION,
+                        modified=False,
+                        position=simactuators.PointToPointActuator(
+                            min_position=0, max_position=100000000, speed=60000
+                        ),
                     ),
                     axis4=types.SimpleNamespace(
-                        address=4, id=0, resolution=wizardry.AXIS_RESOLUTION, modified=False
+                        address=4,
+                        id=wizardry.AXIS_ID if 4 in self.enabled_axes else 0,
+                        resolution=wizardry.AXIS_RESOLUTION,
+                        modified=False,
+                        position=simactuators.PointToPointActuator(
+                            min_position=0, max_position=100000000, speed=60000
+                        ),
                     ),
                 )
         self.axis_count: int = len(vars(self.axes))
